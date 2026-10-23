@@ -214,7 +214,7 @@ resize()
 menu.setAgent(save.equipped.agent, save.equipped.outfit)
 
 window.addEventListener('keydown', (event) => {
-  if (event.code === 'Tab') {
+  if (event.code === 'Tab' || event.key === 'Tab') {
     event.preventDefault()
     if (match && !posted) input.scoreboard = true
     return
@@ -272,6 +272,8 @@ window.addEventListener('blur', () => {
 
 window.addEventListener('mousedown', (event) => {
   if (!match || paused || posted) return
+  const target = event.target as HTMLElement | null
+  if (target?.closest('button, input, textarea, a')) return
   if (event.button === 0) {
     input.left = true
     input.leftEdge = true
@@ -293,12 +295,24 @@ window.addEventListener('mousemove', (event) => {
   input.dy += event.movementY
 })
 
+type KeyboardWithLock = { lock?: (keys?: string[]) => Promise<void>; unlock?: () => void }
+
+function keyboardLock(): void {
+  const keyboard = (navigator as Navigator & { keyboard?: KeyboardWithLock }).keyboard
+  if (!keyboard?.lock) return
+  void keyboard.lock(['Escape', 'Tab']).catch(() => {})
+}
+
 document.addEventListener('pointerlockchange', () => {
-  if (!match || posted || paused) return
-  if (document.pointerLockElement !== view) {
-    paused = true
-    ui.setPaused(true)
+  const keyboard = (navigator as Navigator & { keyboard?: KeyboardWithLock }).keyboard
+  if (document.pointerLockElement === view) {
+    keyboardLock()
+    return
   }
+  keyboard?.unlock?.()
+  if (!match || posted || paused) return
+  paused = true
+  ui.setPaused(true)
 })
 
 view.addEventListener('contextmenu', (event) => event.preventDefault())

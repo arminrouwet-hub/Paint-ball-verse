@@ -24,7 +24,8 @@ button { cursor: pointer; }
 #ui { position: fixed; inset: 0; z-index: 2; pointer-events: none; }
 #screen, #hud, #floaters, #clicklock { position: absolute; inset: 0; }
 #screen { pointer-events: none; overflow: auto; }
-#hud { pointer-events: none; }
+#hud { pointer-events: none; z-index: 4; }
+#clicklock { z-index: 3; }
 #floaters { pointer-events: none; overflow: hidden; }
 .hidden { display: none !important; }
 
@@ -315,10 +316,25 @@ input[type="text"] {
   position: absolute;
   top: 16px;
   right: 16px;
+  z-index: 6;
   border: 3px solid var(--line);
   box-shadow: 4px 4px 0 #120814;
   background: #120814;
 }
+.score-btn {
+  pointer-events: auto;
+  display: block;
+  width: 100%;
+  border: none;
+  border-top: 2px solid var(--line);
+  background: #1b1030;
+  color: var(--paper);
+  font-family: "Russo One", sans-serif;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+  padding: 5px 0 6px;
+}
+.score-btn.on { background: var(--yellow); color: var(--line); }
 #minimap { display: block; width: 168px; height: 168px; }
 .hint {
   position: absolute;

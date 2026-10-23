@@ -38,6 +38,7 @@ export class Ui {
   private confirmQuit = false
   private post: MatchResult | null = null
   private lastHit = -1
+  private scoreLatched = false
   private frames = 0
   private fpsTime = performance.now()
   private fps = 0
@@ -115,6 +116,7 @@ export class Ui {
   }
 
   showMatch(): void {
+    this.scoreLatched = false
     this.screenEl.innerHTML = ''
     this.hud.classList.remove('hidden')
     this.post = null
@@ -248,9 +250,12 @@ export class Ui {
       feed.dataset.key = feedKey
       feed.innerHTML = frame.feed.map((f) => `<div class="${f.tone}">${esc(f.text)}</div>`).join('')
     }
+    const showBoard = (scoreboard || this.scoreLatched) && !this.post
     const board = this.hud.querySelector('#board')!
-    board.classList.toggle('hidden', !scoreboard || !!this.post)
-    if (scoreboard && !this.post) {
+    board.classList.toggle('hidden', !showBoard)
+    const scoreBtn = this.hud.querySelector('.score-btn')
+    scoreBtn?.classList.toggle('on', showBoard)
+    if (showBoard) {
       const blue = frame.rows.filter((r) => r.team === 'blue')
       const orange = frame.rows.filter((r) => r.team === 'orange')
       const row = (r: FrameState['rows'][number]) =>
@@ -608,7 +613,8 @@ export class Ui {
     const target = (event.target as HTMLElement).closest<HTMLElement>('[data-act]')
     if (!target) return
     const act = target.dataset.act
-    if (act === 'pause:resume') this.hooks.resume()
+    if (act === 'score') this.scoreLatched = !this.scoreLatched
+    else if (act === 'pause:resume') this.hooks.resume()
     else if (act === 'pause:quit') this.confirmQuit = true
     else if (act === 'pause:no') this.confirmQuit = false
     else if (act === 'pause:yes') this.hooks.abandon()
@@ -662,7 +668,10 @@ export class Ui {
         <div class="storm safe" id="storm">MIST 0:30</div>
       </div>
       <div class="feed" id="feed"></div>
-      <div class="minimap-wrap"><canvas id="minimap" width="168" height="168"></canvas></div>
+      <div class="minimap-wrap">
+        <button class="score-btn" type="button" data-act="score">TAB</button>
+        <canvas id="minimap" width="168" height="168"></canvas>
+      </div>
       <div class="banner hidden" id="banner"><b id="banner-title"></b><span id="banner-sub"></span></div>
       <div class="crosshair" id="cross" style="--gap:6px"><i></i><i></i><i></i><i></i></div>
       <div class="scope hidden" id="scope"></div>

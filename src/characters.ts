@@ -167,8 +167,8 @@ export function createWeapon(id: WeaponId, wrapId: string): THREE.Group {
   } else {
     body.scale.set(0.1, 0.12, 0.48)
     body.position.set(0, 0, -0.08)
-    const hopper = new THREE.Mesh(GEO.sphere, accent)
-    hopper.scale.setScalar(0.09)
+    const hopper = new THREE.Mesh(GEO.sphereSm, accent)
+    hopper.scale.setScalar(0.07)
     hopper.position.set(0, 0.14, 0.02)
     const grip = new THREE.Mesh(GEO.box, dark)
     grip.scale.set(0.06, 0.16, 0.08)

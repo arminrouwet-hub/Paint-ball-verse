@@ -221,7 +221,9 @@ export class Match {
         depthWrite: false,
       }),
     )
-    this.stormMesh.position.y = 12
+    this.stormMesh.position.set(this.stormX, 12, this.stormZ)
+    this.stormMesh.scale.set(this.stormRadius, 1, this.stormRadius)
+    this.stormMesh.visible = this.stormEnabled
     this.scene.add(this.stormMesh)
     this.nextRing = new THREE.Mesh(
       new THREE.TorusGeometry(1, 0.08, 6, 48),
@@ -252,6 +254,7 @@ export class Match {
     })
 
     this.view = createWeapon(this.player.weaponId, config.wrapId)
+    this.view.scale.setScalar(0.42)
     this.view.traverse((obj) => {
       const mesh = obj as THREE.Mesh
       if (mesh.isMesh) mesh.castShadow = false
@@ -1703,7 +1706,7 @@ export class Match {
     const hideGun = player.weaponId === 'sniper' && scoped || player.state === 'downed'
     this.view.visible = !hideGun
     const reloadDip = player.reloadLeft > 0 ? Math.sin((1 - player.reloadLeft / weaponById(player.weaponId).reload) * Math.PI) : 0
-    this.view.position.set(0.34, -0.3 - bob * 0.4 - reloadDip * 0.18, -0.55 + this.recoil * 2)
+    this.view.position.set(0.26, -0.2 - bob * 0.25 - reloadDip * 0.08, -0.42 + this.recoil)
     this.view.rotation.set(reloadDip * 0.8, 0.04, 0)
   }
 

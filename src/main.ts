@@ -29,7 +29,7 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75))
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.outputColorSpace = THREE.SRGBColorSpace
 renderer.shadowMap.enabled = true
-renderer.shadowMap.type = THREE.PCFSoftShadowMap
+renderer.shadowMap.type = THREE.PCFShadowMap
 renderer.toneMapping = THREE.NoToneMapping
 
 const audio = new AudioBus()
@@ -214,17 +214,19 @@ resize()
 menu.setAgent(save.equipped.agent, save.equipped.outfit)
 
 window.addEventListener('keydown', (event) => {
-  if (event.repeat) return
-  const tag = (event.target as HTMLElement | null)?.tagName
-  if (tag === 'INPUT' || tag === 'TEXTAREA') return
   if (event.code === 'Tab') {
     event.preventDefault()
-    input.scoreboard = true
+    if (match && !posted) input.scoreboard = true
+    return
   }
   if (event.code === 'Escape') {
     event.preventDefault()
-    input.pauseEdge = true
+    if (!event.repeat && match && !posted && !paused) input.pauseEdge = true
+    return
   }
+  if (event.repeat) return
+  const tag = (event.target as HTMLElement | null)?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return
   const map: Record<string, string> = {
     KeyW: 'w',
     KeyA: 'a',
@@ -243,9 +245,10 @@ window.addEventListener('keydown', (event) => {
   if (event.code === 'KeyQ') input.abilityEdge = true
   if (event.code === 'KeyX') input.ultEdge = true
   if (event.code === 'KeyT') input.sprayEdge = true
-})
+}, true)
 
 window.addEventListener('keyup', (event) => {
+  if (event.code === 'Tab') event.preventDefault()
   const map: Record<string, string> = {
     KeyW: 'w',
     KeyA: 'a',
@@ -258,7 +261,7 @@ window.addEventListener('keyup', (event) => {
   const key = map[event.code]
   if (key) input.keys.delete(key)
   if (event.code === 'Tab') input.scoreboard = false
-})
+}, true)
 
 window.addEventListener('blur', () => {
   input.keys.clear()
@@ -290,6 +293,14 @@ window.addEventListener('mousemove', (event) => {
   input.dy += event.movementY
 })
 
+document.addEventListener('pointerlockchange', () => {
+  if (!match || posted || paused) return
+  if (document.pointerLockElement !== view) {
+    paused = true
+    ui.setPaused(true)
+  }
+})
+
 view.addEventListener('contextmenu', (event) => event.preventDefault())
 view.addEventListener('click', () => {
   audio.unlock()
@@ -300,11 +311,10 @@ let last = performance.now()
 function loop(now: number): void {
   const dt = Math.min(0.05, (now - last) / 1000)
   last = now
-  if (input.pauseEdge && match && !posted) {
-    paused = !paused
-    ui.setPaused(paused)
-    if (paused) document.exitPointerLock()
-    else view.requestPointerLock()
+  if (input.pauseEdge && match && !posted && !paused) {
+    paused = true
+    ui.setPaused(true)
+    if (document.pointerLockElement === view) document.exitPointerLock()
   }
   if (match && !paused) {
     match.update(dt, input)

@@ -114,7 +114,24 @@ export function makeWrapTexture(id: string): THREE.CanvasTexture {
   c.width = 128
   c.height = 64
   const g = c.getContext('2d')!
-  if (id === 'candy') {
+  if (id === 'dreamwings') {
+    const grad = g.createLinearGradient(0, 0, 128, 64)
+    grad.addColorStop(0, '#fbe9ff')
+    grad.addColorStop(0.35, '#e3d2ff')
+    grad.addColorStop(0.6, '#d4f3ff')
+    grad.addColorStop(1, '#ffd6ef')
+    g.fillStyle = grad
+    g.fillRect(0, 0, 128, 64)
+    g.fillStyle = 'rgba(255,255,255,0.65)'
+    g.fillRect(0, 10, 128, 5)
+    g.fillStyle = 'rgba(255,170,226,0.55)'
+    g.fillRect(0, 44, 128, 3)
+    g.fillStyle = '#ffffff'
+    for (let i = 0; i < 14; i++) {
+      star(g, Math.random() * 128, Math.random() * 64, 3, 1.2, 4)
+      g.fill()
+    }
+  } else if (id === 'candy') {
     g.fillStyle = '#ff4d8d'
     g.fillRect(0, 0, 128, 64)
     g.fillStyle = '#3de1ff'
@@ -166,7 +183,37 @@ export function makeSprayTexture(id: string): THREE.CanvasTexture {
   c.height = 256
   const g = c.getContext('2d')!
   g.clearRect(0, 0, 256, 256)
-  if (id === 'crown') {
+  if (id === 'flutter') {
+    const wing = (dir: number, color: string) => {
+      g.fillStyle = color
+      g.beginPath()
+      g.moveTo(128, 128)
+      g.bezierCurveTo(128 + dir * 30, 40, 128 + dir * 110, 30, 128 + dir * 104, 92)
+      g.bezierCurveTo(128 + dir * 100, 122, 128 + dir * 50, 132, 128, 128)
+      g.fill()
+      g.beginPath()
+      g.moveTo(128, 132)
+      g.bezierCurveTo(128 + dir * 60, 140, 128 + dir * 86, 196, 128 + dir * 52, 206)
+      g.bezierCurveTo(128 + dir * 24, 212, 128 + dir * 8, 170, 128, 132)
+      g.fill()
+    }
+    wing(-1, '#d9b8ff')
+    wing(1, '#ffb8e6')
+    g.fillStyle = 'rgba(255,255,255,0.7)'
+    g.beginPath()
+    g.ellipse(84, 88, 18, 10, -0.6, 0, Math.PI * 2)
+    g.ellipse(172, 88, 18, 10, 0.6, 0, Math.PI * 2)
+    g.fill()
+    g.fillStyle = '#5b3f8f'
+    g.beginPath()
+    g.ellipse(128, 140, 7, 38, 0, 0, Math.PI * 2)
+    g.fill()
+    g.fillStyle = '#fff5a8'
+    star(g, 200, 50, 14, 5, 4)
+    g.fill()
+    star(g, 60, 190, 10, 4, 4)
+    g.fill()
+  } else if (id === 'crown') {
     g.fillStyle = '#ffd056'
     g.beginPath()
     g.moveTo(48, 170)

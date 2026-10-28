@@ -6,7 +6,7 @@ import './style.css'
 
 import * as THREE from 'three'
 import { AudioBus } from './audio.ts'
-import { COSMETICS, calcSr, calcXp, levelFromXp } from './content.ts'
+import { COSMETICS, PC_PER_TAGS, calcSr, calcXp, levelFromXp } from './content.ts'
 import { MAPS, mapById } from './maps.ts'
 import { Match, type MatchOutcome } from './match.ts'
 import { MenuScene } from './menuScene.ts'
@@ -52,7 +52,7 @@ const input: InputState = {
   pauseEdge: false,
 }
 
-let menu = new MenuScene()
+const menu = new MenuScene({ outfit: save.equipped.outfit, weapon: save.equipped.weapon, wrap: save.equipped.wrap, buddy: save.equipped.buddy })
 let match: Match | null = null
 let paused = false
 let posted = false
@@ -68,7 +68,7 @@ function patch(fn: (save: Save) => void): void {
 function unlocksBetween(beforeXp: number, afterXp: number): MatchResult['unlocks'] {
   const before = levelFromXp(beforeXp).level
   const after = levelFromXp(afterXp).level
-  const notes: UnlockNote[] = COSMETICS.filter((item) => item.level > before && item.level <= after).map((item) => ({
+  const notes: UnlockNote[] = COSMETICS.filter((item) => item.price === undefined && item.level > before && item.level <= after).map((item) => ({
     name: item.name,
     kind: item.kind,
   }))
@@ -84,6 +84,11 @@ function applyResult(config: MatchConfig, outcome: MatchOutcome): MatchResult {
   const xp = calcXp(outcome.stats, outcome.won)
   const srDelta = config.ranked ? calcSr(outcome.stats, outcome.won) : 0
   save.xp += xp
+  const pcTotalTags = save.pcBank + outcome.stats.tags
+  const pcEarned = Math.floor(pcTotalTags / PC_PER_TAGS)
+  save.pc += pcEarned
+  save.pcLifetime += pcEarned
+  save.pcBank = pcTotalTags % PC_PER_TAGS
   if (config.ranked) {
     save.sr = Math.max(0, save.sr + srDelta)
     if (outcome.won) save.wins += 1
@@ -97,6 +102,7 @@ function applyResult(config: MatchConfig, outcome: MatchOutcome): MatchResult {
     srDelta,
     ranked: config.ranked,
     xp,
+    pc: pcEarned,
   })
   save.history = save.history.slice(0, 8)
   save = sanitize(save)
@@ -110,6 +116,8 @@ function applyResult(config: MatchConfig, outcome: MatchOutcome): MatchResult {
     difficulty: config.difficulty,
     stats: outcome.stats,
     xp,
+    pcEarned,
+    pcTotal: save.pc,
     xpBefore,
     srBefore,
     srDelta,
@@ -143,7 +151,10 @@ const ui = new Ui(root, {
     writeSave(save)
     audio.setVolume(save.volume)
   },
-  preview: (agent, outfit) => menu.setAgent(agent, outfit),
+  preview: (look) => menu.setLook(look),
+  view: (v) => {
+    if (v) menu.setView(v)
+  },
   start: (config) => begin(config),
   resume: () => {
     if (!match || posted) return
@@ -183,7 +194,7 @@ function teardown(): void {
   paused = false
   posted = false
   document.exitPointerLock()
-  ui.setScreen('menu')
+  ui.showLobby()
 }
 
 function begin(config: MatchConfig): void {
@@ -211,7 +222,25 @@ function begin(config: MatchConfig): void {
 
 window.addEventListener('resize', resize)
 resize()
-menu.setAgent(save.equipped.agent, save.equipped.outfit)
+ui.showLobby()
+
+let dragging = false
+let dragX = 0
+window.addEventListener('pointerdown', (event) => {
+  if (match) return
+  const target = event.target as HTMLElement
+  if (target.closest('button, input, a, .dialog, .topbar, aside, .locker-panel, .shop, .career')) return
+  dragging = true
+  dragX = event.clientX
+})
+window.addEventListener('pointermove', (event) => {
+  if (!dragging || match) return
+  menu.drag(event.clientX - dragX)
+  dragX = event.clientX
+})
+window.addEventListener('pointerup', () => {
+  dragging = false
+})
 
 window.addEventListener('keydown', (event) => {
   if (event.code === 'Tab' || event.key === 'Tab') {

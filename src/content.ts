@@ -40,81 +40,23 @@ export type WeaponDef = {
 
 export const AGENTS: AgentDef[] = [
   {
-    id: 'blitz',
-    name: 'Blitz',
-    role: 'Duelist',
-    color: 0x3de1ff,
-    blurb: 'Closes the lane and paints it shut.',
-    passive: 'Lighter boots. A step quicker than the rest of the roster.',
-    signature: 'Paint Dash',
-    signatureBlurb: 'Burst forward on a slick of paint. Anyone you blow past eats a tag.',
-    sigLabel: 'DASH',
-    ultimate: 'Trigger Storm',
-    ultimateBlurb: 'The hopper goes hot. Fire rate surges and reloads barely exist.',
-    ultLabel: 'STORM',
-    cd: 8,
-  },
-  {
-    id: 'guardian',
-    name: 'Guardian',
-    role: 'Anchor',
-    color: 0xffd23d,
-    blurb: 'Holds a lane until the paint dries.',
-    passive: 'Shoulders a slab of cover. Harder to shove off a point.',
-    signature: 'Splatter Shield',
-    signatureBlurb: 'Plant a paint-glass wall. Incoming balls break on it.',
-    sigLabel: 'SHIELD',
-    ultimate: 'Fortify',
-    ultimateBlurb: 'You and nearby teammates shrug off half the damage for a few seconds.',
-    ultLabel: 'FORTIFY',
-    cd: 12,
-  },
-  {
-    id: 'scout',
-    name: 'Scout',
-    role: 'Recon',
-    color: 0xb388ff,
-    blurb: 'Finds the flank before it finds you.',
-    passive: 'Reads the lane. Spotted targets stay marked a little longer.',
-    signature: 'Recon Dart',
-    signatureBlurb: 'A dart that sticks to walls and outlines enemies through cover.',
-    sigLabel: 'DART',
-    ultimate: 'Full Scan',
-    ultimateBlurb: 'Ping every opposing player on the map for a short window.',
-    ultLabel: 'SCAN',
-    cd: 12,
-  },
-  {
-    id: 'splatter',
-    name: 'Splatter',
-    role: 'Area',
-    color: 0xff4d8d,
-    blurb: 'Turns corners into puddles.',
-    passive: 'Blasts leave a wider paint pool.',
-    signature: 'Paint Grenade',
-    signatureBlurb: 'Lob a ball that bursts into a splash of damage and color.',
-    sigLabel: 'NADE',
-    ultimate: 'Paint Cannon',
-    ultimateBlurb: 'Fire one enormous ball. Direct hits and the splash both hurt.',
-    ultLabel: 'CANNON',
-    cd: 11,
-  },
-  {
-    id: 'medic',
-    name: 'Medic',
-    role: 'Support',
-    color: 0x5dff9a,
-    blurb: 'Keeps a wiped lane from staying wiped.',
-    passive: 'While Medic is standing, fatal tags drop teammates into a crawl instead of a burst.',
-    signature: 'Revive Pack',
-    signatureBlurb: 'Throw a pack. It pops downed teammates up and tops off the rest.',
-    sigLabel: 'PACK',
-    ultimate: 'Team Heal',
-    ultimateBlurb: 'A wave of fresh paint. Heal the living and stand the downed back up.',
-    ultLabel: 'HEAL',
-    cd: 14,
+    id: 'vesper',
+    name: 'Vesper',
+    role: 'Shade',
+    color: 0x8fd3ff,
+    blurb: 'A hooded drifter who walks through ink and leaves the other squad painting at shadows.',
+    passive: 'Echo: landing a tag refreshes Shade Step.',
+    signature: 'Shade Step',
+    signatureBlurb: 'Melt into ink and reappear up to 14 meters ahead, wherever the crosshair points.',
+    sigLabel: 'STEP',
+    ultimate: 'Blackout',
+    ultimateBlurb: 'Hurl a violet orb that drifts through walls. Every enemy it brushes goes blind for three seconds.',
+    ultLabel: 'BLACKOUT',
+    cd: 9,
   },
 ]
+
+export const VESPER = AGENTS[0]!
 
 export const WEAPONS: WeaponDef[] = [
   {
@@ -293,7 +235,7 @@ export function difficultyForSr(sr: number): Difficulty {
   return 'rookie'
 }
 
-export type ItemKind = 'paint' | 'wrap' | 'spray' | 'outfit'
+export type ItemKind = 'outfit' | 'wrap' | 'buddy' | 'spray' | 'paint'
 
 export type Cosmetic = {
   id: string
@@ -303,24 +245,53 @@ export type Cosmetic = {
   level: number
   color: number
   accent?: number
+  price?: number
+  bundle?: string
+  rarity?: 'common' | 'rare' | 'epic' | 'legendary'
 }
 
 export const COSMETICS: Cosmetic[] = [
+  { id: 'default', kind: 'outfit', name: 'Vesper', blurb: 'The hood, the cloak, the three cold eyes.', level: 1, color: 0x231b38, accent: 0x8fd3ff },
+  { id: 'neon', kind: 'outfit', name: 'Neon Wraith', blurb: 'Black cloak with a circuit hum.', level: 6, color: 0x141a22, accent: 0x39ff9a, rarity: 'rare' },
+  { id: 'white', kind: 'outfit', name: 'Championship Shade', blurb: 'A clean white cloak for a dirty lane.', level: 8, color: 0xf4f7ff, accent: 0x7ecbff, rarity: 'rare' },
+  { id: 'evori', kind: 'outfit', name: 'Evori Dream Wings', blurb: 'Pearl cloak, rose-glow eyes, and a pair of glass butterfly wings.', level: 0, color: 0xf6f0ff, accent: 0xff8fd8, price: 12, bundle: 'evori', rarity: 'legendary' },
+  { id: 'factory', kind: 'wrap', name: 'Factory', blurb: 'The marker you were handed.', level: 1, color: 0xc8d0dc },
+  { id: 'candy', kind: 'wrap', name: 'Candy Drip', blurb: 'Pink and cyan, still wet.', level: 4, color: 0xff4d8d, rarity: 'rare' },
+  { id: 'hazard', kind: 'wrap', name: 'Hazard', blurb: 'Chevrons for people who push smoke.', level: 9, color: 0xffe14a, rarity: 'rare' },
+  { id: 'frost', kind: 'wrap', name: 'Frost', blurb: 'Pale panels, cold lane.', level: 11, color: 0xbfe9ff, rarity: 'epic' },
+  { id: 'dreamwings', kind: 'wrap', name: 'Evori Dreamwing', blurb: 'Pearl chrome with a pair of fluttering fins on every marker.', level: 0, color: 0xe9d8ff, accent: 0xffb8e6, price: 9, bundle: 'evori', rarity: 'legendary' },
+  { id: 'none', kind: 'buddy', name: 'No Buddy', blurb: 'A bare marker.', level: 1, color: 0x6a6280 },
+  { id: 'lumi', kind: 'buddy', name: 'Lumi the Star Cat', blurb: 'A sleepy lilac cat with a star on her forehead. Swings when you strafe.', level: 0, color: 0xa98bff, accent: 0xffe27a, price: 6, bundle: 'evori', rarity: 'epic' },
+  { id: 'burst', kind: 'spray', name: 'Burst', blurb: 'A starburst you can slap on a wall.', level: 1, color: 0xfff4ea },
+  { id: 'crown', kind: 'spray', name: 'Crown', blurb: 'For rounds you actually closed.', level: 8, color: 0xffd056, rarity: 'rare' },
+  { id: 'king', kind: 'spray', name: 'Splat King', blurb: 'The victory mark.', level: 10, color: 0xff4d8d, rarity: 'epic' },
+  { id: 'flutter', kind: 'spray', name: 'Evori Flutter', blurb: 'A pastel butterfly that lands on any wall.', level: 0, color: 0xffb8e6, price: 3, bundle: 'evori', rarity: 'rare' },
   { id: 'classic', kind: 'paint', name: 'Classic Capsule', blurb: 'Team color, straight from the hopper.', level: 1, color: 0xfff4ea },
   { id: 'magenta', kind: 'paint', name: 'Magenta Burst', blurb: 'A hot tint in every splat you throw.', level: 2, color: 0xff3d9a },
-  { id: 'gold', kind: 'paint', name: 'Gold Capsule', blurb: 'Championship pigment. Hard to miss.', level: 7, color: 0xffd056 },
-  { id: 'void', kind: 'paint', name: 'Void Purple', blurb: 'Night-match ink.', level: 12, color: 0x9b6bff },
-  { id: 'factory', kind: 'wrap', name: 'Factory', blurb: 'The marker you were handed.', level: 1, color: 0xc8d0dc },
-  { id: 'candy', kind: 'wrap', name: 'Candy Drip', blurb: 'Pink and cyan, still wet.', level: 4, color: 0xff4d8d },
-  { id: 'hazard', kind: 'wrap', name: 'Hazard', blurb: 'Chevrons for people who push smoke.', level: 9, color: 0xffe14a },
-  { id: 'frost', kind: 'wrap', name: 'Frost', blurb: 'Pale panels, cold lane.', level: 11, color: 0xbfe9ff },
-  { id: 'burst', kind: 'spray', name: 'Burst', blurb: 'A starburst you can slap on a wall.', level: 1, color: 0xfff4ea },
-  { id: 'crown', kind: 'spray', name: 'Crown', blurb: 'For rounds you actually closed.', level: 8, color: 0xffd056 },
-  { id: 'king', kind: 'spray', name: 'Splat King', blurb: 'The victory mark.', level: 10, color: 0xff4d8d },
-  { id: 'default', kind: 'outfit', name: 'Issue Gear', blurb: 'Agent colors, untouched.', level: 1, color: 0xffffff },
-  { id: 'neon', kind: 'outfit', name: 'Neon Circuit', blurb: 'Visor glow turned all the way up.', level: 6, color: 0x39ff9a, accent: 0xff2bd6 },
-  { id: 'white', kind: 'outfit', name: 'Championship White', blurb: 'Clean kit. Dirty paint.', level: 8, color: 0xf4f7ff, accent: 0x7ecbff },
+  { id: 'gold', kind: 'paint', name: 'Gold Capsule', blurb: 'Championship pigment. Hard to miss.', level: 7, color: 0xffd056, rarity: 'rare' },
+  { id: 'void', kind: 'paint', name: 'Void Purple', blurb: 'Night-match ink.', level: 12, color: 0x9b6bff, rarity: 'epic' },
+  { id: 'aurora', kind: 'paint', name: 'Aurora Dream', blurb: 'Rose and lilac, like the sky over the Evori fields.', level: 0, color: 0xe7a8ff, price: 4, bundle: 'evori', rarity: 'epic' },
 ]
+
+export type Bundle = {
+  id: string
+  name: string
+  tagline: string
+  items: string[]
+  price: number
+}
+
+export const BUNDLES: Bundle[] = [
+  {
+    id: 'evori',
+    name: 'Evori Dream Wings',
+    tagline: 'Pearl, pastel, and a little bit of night sky.',
+    items: ['evori', 'dreamwings', 'lumi', 'flutter', 'aurora'],
+    price: 20,
+  },
+]
+
+export const PC_PER_TAGS = 3
 
 export function cosmeticsOf(kind: ItemKind): Cosmetic[] {
   return COSMETICS.filter((c) => c.kind === kind)
@@ -328,6 +299,10 @@ export function cosmeticsOf(kind: ItemKind): Cosmetic[] {
 
 export function cosmetic(id: string): Cosmetic {
   return COSMETICS.find((c) => c.id === id) ?? COSMETICS[0]!
+}
+
+export function bundleValue(bundle: Bundle): number {
+  return bundle.items.reduce((sum, id) => sum + (cosmetic(id).price ?? 0), 0)
 }
 
 export function agentById(id: AgentId): AgentDef {
@@ -358,13 +333,12 @@ export function levelFromXp(xp: number): { level: number; into: number; next: nu
 export function calcXp(stats: {
   tags: number
   assists: number
-  revives: number
   damage: number
   shots: number
   hits: number
 }, won: boolean): number {
   const acc = stats.shots > 0 ? stats.hits / stats.shots : 0
-  return Math.round(80 + (won ? 220 : 40) + stats.tags * 36 + stats.assists * 18 + stats.revives * 30 + stats.damage * 0.12 + acc * 70)
+  return Math.round(80 + (won ? 220 : 40) + stats.tags * 36 + stats.assists * 18 + stats.damage * 0.12 + acc * 70)
 }
 
 export function calcSr(stats: { tags: number; deaths: number; damage: number }, won: boolean): number {

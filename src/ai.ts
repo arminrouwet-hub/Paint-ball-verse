@@ -1,5 +1,5 @@
 import type { Actor, WeaponId } from './types.ts'
-import { DIFFICULTY, agentById } from './content.ts'
+import { DIFFICULTY } from './content.ts'
 import type { DiffTune } from './content.ts'
 import { angNorm } from './util.ts'
 import { EYE } from './physics.ts'
@@ -29,17 +29,14 @@ export function tickBot(bot: Actor, hooks: AiHooks): void {
     bot.wishSpeed = 0
     return
   }
-  if (bot.state === 'downed') {
-    const away = threat(bot, hooks)
-    if (away) {
-      const dx = bot.x - away.x
-      const dz = bot.z - away.z
-      const len = Math.hypot(dx, dz) || 1
-      bot.wishX = dx / len
-      bot.wishZ = dz / len
-      bot.wishSpeed = 2.1
-      bot.yaw = Math.atan2(-bot.wishX, -bot.wishZ)
-    } else bot.wishSpeed = 0
+  if (bot.blindUntil > hooks.now) {
+    bot.ads = false
+    bot.targetId = -1
+    bot.retreat = true
+    if (bot.waypointI < 0 || hooks.rng() < hooks.dt * 0.6) bot.waypointI = Math.floor(hooks.rng() * hooks.waypoints.length)
+    moveToward(bot, hooks, null, false)
+    bot.wishSpeed *= 0.55
+    bot.yaw += Math.sin(hooks.now * 2.3 + bot.id) * hooks.dt * 1.4
     return
   }
 
@@ -111,34 +108,20 @@ export function tickBot(bot: Actor, hooks: AiHooks): void {
     if (!friendly && dist < maxR + 8) hooks.fire(bot)
     if (dist > maxR) bot.ads = bot.weaponId === 'sniper'
     else bot.ads = bot.weaponId === 'sniper' && dist > minR
-    if (hooks.rng() < tune.ability) useKit(bot, target, hooks, dist)
+    if (hooks.rng() < tune.ability * hooks.dt * 6) useKit(bot, target, hooks, dist, true)
   } else {
     bot.ads = false
-    if (target && hooks.rng() < tune.ability * 0.5) useKit(bot, target, hooks, Math.hypot(target.x - bot.x, target.z - bot.z))
+    if (target && hooks.rng() < tune.ability * hooks.dt * 3) useKit(bot, target, hooks, Math.hypot(target.x - bot.x, target.z - bot.z), seen)
   }
 
   moveToward(bot, hooks, target, seen)
-}
-
-function threat(bot: Actor, hooks: AiHooks): Actor | null {
-  let best: Actor | null = null
-  let d = Infinity
-  for (const a of hooks.actors) {
-    if (a.team === bot.team || a.state === 'dead') continue
-    const dist = Math.hypot(a.x - bot.x, a.z - bot.z)
-    if (dist < d) {
-      d = dist
-      best = a
-    }
-  }
-  return best
 }
 
 function aimAt(bot: Actor, target: Actor, hooks: AiHooks, seen: boolean): void {
   const tune = hooks.tune
   const ex = target.x
   const ez = target.z
-  const ey = target.y + (target.state === 'downed' ? 0.5 : EYE)
+  const ey = target.y + EYE
   let tx = ex - bot.x
   let ty = ey - (bot.y + EYE)
   let tz = ez - bot.z
@@ -291,28 +274,17 @@ function pickRoam(bot: Actor, target: Actor | null, hooks: AiHooks): number {
   return Math.floor(hooks.rng() * hooks.waypoints.length)
 }
 
-function useKit(bot: Actor, target: Actor, hooks: AiHooks, dist: number): void {
-  const def = agentById(bot.agentId)
-  if (bot.ult >= 100) {
-    if (bot.agentId === 'blitz' && dist < 28) hooks.ultimate(bot)
-    else if (bot.agentId === 'guardian' && (bot.hp < 55 || dist < 16)) hooks.ultimate(bot)
-    else if (bot.agentId === 'scout') hooks.ultimate(bot)
-    else if (bot.agentId === 'splatter' && dist < 30) hooks.ultimate(bot)
-    else if (bot.agentId === 'medic') {
-      const need = hooks.actors.some((a) => a.team === bot.team && a.id !== bot.id && (a.state === 'downed' || a.hp < 55))
-      if (need) hooks.ultimate(bot)
-    }
+function useKit(bot: Actor, target: Actor, hooks: AiHooks, dist: number, seen: boolean): void {
+  if (bot.ult >= 100 && dist < 40 && target.blindUntil < hooks.now) hooks.ultimate(bot)
+  if (bot.sigCd > 0 || !seen) return
+  const [, maxR] = PREFERRED[bot.weaponId]
+  if (dist > maxR + 6 && dist < maxR + 26 && !bot.retreat) hooks.signature(bot)
+  else if (bot.retreat && bot.hp < 35 && dist < 14) {
+    const yaw = bot.yaw
+    bot.yaw += Math.PI
+    hooks.signature(bot)
+    bot.yaw = yaw
   }
-  if (bot.sigCd > 0) return
-  if (bot.agentId === 'blitz' && dist > 5 && dist < 16) hooks.signature(bot)
-  else if (bot.agentId === 'guardian' && dist < 26 && bot.hp < 80) hooks.signature(bot)
-  else if (bot.agentId === 'scout' && target.spottedUntil < hooks.now) hooks.signature(bot)
-  else if (bot.agentId === 'splatter' && dist > 6 && dist < 22) hooks.signature(bot)
-  else if (bot.agentId === 'medic') {
-    const pack = hooks.actors.some((a) => a.team === bot.team && (a.state === 'downed' || (a.hp < 60 && a.state === 'alive')))
-    if (pack) hooks.signature(bot)
-  }
-  void def
 }
 
 export function tuneFor(id: keyof typeof DIFFICULTY) {

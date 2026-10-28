@@ -1,11 +1,11 @@
 export type Team = 'blue' | 'orange'
-export type AgentId = 'blitz' | 'guardian' | 'scout' | 'splatter' | 'medic'
+export type AgentId = 'vesper'
 export type WeaponId = 'rapid' | 'sniper' | 'splash'
 export type Difficulty = 'rookie' | 'veteran' | 'champion'
-export type Life = 'alive' | 'downed' | 'dead'
+export type Life = 'alive' | 'dead'
 export type Phase = 'countdown' | 'live' | 'end' | 'match'
 export type PickupKind = 'speed' | 'hopper' | 'vest'
-export type ShotKind = 'ball' | 'grenade' | 'cannon' | 'dart' | 'pack'
+export type ShotKind = 'ball' | 'orb'
 
 export type Vec3 = { x: number; y: number; z: number }
 
@@ -158,21 +158,12 @@ export type Actor = Body & {
   fireLeft: number
   sigCd: number
   ult: number
-  dashUntil: number
-  dashX: number
-  dashZ: number
-  dashHits: number[]
-  shieldUntil: number
-  resistUntil: number
-  resist: number
   hasteUntil: number
-  fireRateUntil: number
+  blindUntil: number
   vest: boolean
   protectUntil: number
   spottedUntil: number
   knownUntil: number
-  downUntil: number
-  downerId: number
   flashUntil: number
   hurtUntil: number
   hurtFromX: number
@@ -184,7 +175,6 @@ export type Actor = Body & {
   shots: number
   hits: number
   headshots: number
-  revives: number
   roundTags: number
   hurts: { id: number; time: number; amount: number }[]
   thinkAt: number
@@ -224,8 +214,7 @@ export type Projectile = {
   age: number
   arm: number
   color: number
-  stickId: number
-  stuck: boolean
+  hitIds: number[]
   alive: boolean
 }
 
@@ -253,6 +242,8 @@ export type MatchConfig = {
   wrapId: string
   paintId: string
   sprayId: string
+  buddyId: string
+  pcBank: number
   ranked: boolean
   seed: number
   playerName: string
@@ -285,7 +276,6 @@ export type FeedItem = { id: number; text: string; tone: 'blue' | 'orange' | 'ne
 export type BoardRow = {
   name: string
   team: Team
-  agent: string
   weapon: string
   tags: number
   deaths: number
@@ -299,8 +289,6 @@ export type Floater = { x: number; y: number; text: string; head: boolean }
 
 export type FrameState = {
   hp: number
-  downed: boolean
-  downLeft: number
   dead: boolean
   spectate: string | null
   ammo: number
@@ -315,8 +303,9 @@ export type FrameState = {
   ult: number
   vest: boolean
   haste: number
-  resist: boolean
-  fireRate: boolean
+  blind: number
+  pc: number
+  pcProgress: number
   blue: number
   orange: number
   need: number
@@ -354,7 +343,6 @@ export type PersonalStats = {
   shots: number
   hits: number
   headshots: number
-  revives: number
 }
 
 export type UnlockNote = { name: string; kind: string }
@@ -368,6 +356,8 @@ export type MatchResult = {
   difficulty: Difficulty
   stats: PersonalStats
   xp: number
+  pcEarned: number
+  pcTotal: number
   xpBefore: number
   srBefore: number
   srDelta: number

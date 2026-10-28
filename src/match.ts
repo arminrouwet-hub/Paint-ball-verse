@@ -14,10 +14,10 @@ import type {
   WeaponId,
 } from './types.ts'
 import {
-  AGENTS,
   BOT_NAMES,
   DIFFICULTY,
-  agentById,
+  PC_PER_TAGS,
+  VESPER,
   cosmetic,
   teamColor,
   weaponById,
@@ -49,6 +49,9 @@ const ROUND_TIME = 150
 const GRAVITY = 26
 const LOW_GRAVITY = 9.2
 const JUMP = 8.9
+const STEP_RANGE = 14
+const BLIND_TIME = 3.2
+const ORB_RADIUS = 2.4
 
 type Floater3 = { x: number; y: number; z: number; text: string; head: boolean; life: number }
 type Feed = { id: number; text: string; tone: 'blue' | 'orange' | 'neutral'; until: number }
@@ -56,9 +59,8 @@ type Bit = { mesh: THREE.Mesh; vx: number; vy: number; vz: number; life: number 
 
 type Visual = {
   rig: Rig
-  shield: THREE.Mesh
   chevron: THREE.Mesh
-  fortify: THREE.Mesh
+  veil: THREE.Mesh
   flash: THREE.Mesh
   label: THREE.Sprite
   bar: THREE.Group
@@ -149,6 +151,8 @@ export class Match {
   private ping: { x: number; y: number; z: number; until: number } | null = null
   private readonly pingMesh: THREE.Mesh
   private fov = 74
+  private pcPops = 0
+  private buddySwing = 0
   private lowgrav: boolean
   private stormEnabled: boolean
   private readonly player: Actor
@@ -182,10 +186,7 @@ export class Match {
     const onegun = config.onegun || this.map.mutator === 'onegun'
     const forced = onegun ? oneGunWeapon(config.seed) : null
     const names = shuffle(BOT_NAMES, this.rng)
-    const ids = AGENTS.map((a) => a.id)
-    const rest = shuffle(ids.filter((id) => id !== config.agentId), this.rng)
-    const blueAgents = [config.agentId, ...rest.slice(0, config.teamSize - 1)]
-    const orangeAgents = shuffle(ids, this.rng).slice(0, config.teamSize)
+    const squad: AgentId[] = Array.from({ length: config.teamSize }, () => VESPER.id)
     let nameI = 0
     const weapons: WeaponId[] = ['rapid', 'sniper', 'splash']
     const spawnTeam = (team: Team, agents: AgentId[]) => {
@@ -203,8 +204,8 @@ export class Match {
         this.visuals.set(actor.id, this.makeVisual(actor))
       })
     }
-    spawnTeam('blue', blueAgents)
-    spawnTeam('orange', orangeAgents)
+    spawnTeam('blue', squad)
+    spawnTeam('orange', squad)
     this.player = this.actors[0]!
 
     this.stormPlan = this.planStorm()
@@ -357,19 +358,12 @@ export class Match {
         if (actor.sigCd > 0) actor.sigCd = Math.max(0, actor.sigCd - dt)
         if (actor.fireLeft > 0) actor.fireLeft = Math.max(0, actor.fireLeft - dt)
         if (actor.reloadLeft > 0) {
-          const mult = actor.fireRateUntil > this.now ? 4 : 1
-          actor.reloadLeft -= dt * mult
+          actor.reloadLeft -= dt
           if (actor.reloadLeft <= 0) {
             actor.ammo = actor.mag
             actor.reloadLeft = -1
           }
         }
-        if (actor.resistUntil <= this.now) actor.resist = 1
-        if (actor.dashUntil > this.now) this.dashTouch(actor)
-      }
-      if (actor.state === 'downed' && this.now >= actor.downUntil) {
-        const killer = this.actor(actor.downerId)
-        this.eliminate(actor, killer, 'bleed')
       }
     }
 
@@ -401,14 +395,13 @@ export class Match {
   frame(width: number, height: number): FrameState {
     const player = this.player
     const weapon = weaponById(player.weaponId)
-    const agent = agentById(player.agentId)
+    const agent = VESPER
     const w = weaponById(player.weaponId)
     const reload = player.reloadLeft > 0 ? 1 - player.reloadLeft / w.reload : -1
     const spec = player.state === 'dead' ? this.actor(this.spectateId) : null
     const rows = this.actors.map((a) => ({
       name: a.name,
       team: a.team,
-      agent: agentById(a.agentId).name,
       weapon: weaponById(a.weaponId).name,
       tags: a.tags,
       deaths: a.deaths,
@@ -439,8 +432,6 @@ export class Match {
     const stormLeft = this.overtime ? 0 : Math.max(0, 30 - this.stormClock)
     return {
       hp: Math.max(0, Math.ceil(player.hp)),
-      downed: player.state === 'downed',
-      downLeft: player.state === 'downed' ? Math.max(0, player.downUntil - this.now) : 0,
       dead: player.state === 'dead',
       spectate: spec ? spec.name : null,
       ammo: player.ammo,
@@ -455,8 +446,9 @@ export class Match {
       ult: player.ult,
       vest: player.vest,
       haste: Math.max(0, player.hasteUntil - this.now),
-      resist: player.resistUntil > this.now,
-      fireRate: player.fireRateUntil > this.now,
+      blind: player.state === 'alive' ? clamp((player.blindUntil - this.now) / 0.6, 0, 1) : 0,
+      pc: Math.floor((this.config.pcBank + player.tags) / PC_PER_TAGS),
+      pcProgress: (this.config.pcBank + player.tags) % PC_PER_TAGS,
       blue: this.score.blue,
       orange: this.score.orange,
       need: this.config.roundsToWin,
@@ -480,7 +472,7 @@ export class Match {
       hitHead: this.hitHead,
       floaters,
       phase: this.phase,
-      hint: this.phase === 'countdown' ? 'WASD move · mouse aim · click fire · Q kit · X ult · R reload' : '',
+      hint: this.phase === 'countdown' ? 'WASD move · mouse aim · click fire · Q Shade Step · X Blackout · R reload' : '',
       crosshair: player.state === 'alive',
       protect: player.protectUntil > this.now,
       round: this.round,
@@ -515,10 +507,8 @@ export class Match {
       if (a.team === 'orange' && !seen) continue
       ctx.beginPath()
       ctx.fillStyle = a.team === 'blue' ? '#7eb0ff' : '#ffb078'
-      ctx.globalAlpha = a.state === 'downed' ? 0.45 : 1
       ctx.arc(sx(a.x), sz(a.z), a.isPlayer ? 4 : 3, 0, Math.PI * 2)
       ctx.fill()
-      ctx.globalAlpha = 1
     }
     const p = this.player
     ctx.save()
@@ -592,21 +582,12 @@ export class Match {
       fireLeft: 0,
       sigCd: 0,
       ult: 0,
-      dashUntil: 0,
-      dashX: 0,
-      dashZ: 0,
-      dashHits: [],
-      shieldUntil: 0,
-      resistUntil: 0,
-      resist: 1,
       hasteUntil: 0,
-      fireRateUntil: 0,
+      blindUntil: 0,
       vest: false,
       protectUntil: 0,
       spottedUntil: 0,
       knownUntil: 0,
-      downUntil: 0,
-      downerId: -1,
       flashUntil: 0,
       hurtUntil: 0,
       hurtFromX: 0,
@@ -618,7 +599,6 @@ export class Match {
       shots: 0,
       hits: 0,
       headshots: 0,
-      revives: 0,
       roundTags: 0,
       hurts: [],
       thinkAt: 0,
@@ -635,17 +615,12 @@ export class Match {
   }
 
   private makeVisual(actor: Actor): Visual {
-    const rig = createCharacter(
-      actor.agentId,
-      actor.team,
-      actor.isPlayer ? this.config.outfitId : 'default',
-      actor.weaponId,
-      actor.isPlayer ? this.config.wrapId : 'factory',
-    )
-    const shield = new THREE.Mesh(GEO.box, basic(teamColor(actor.team), 0.38))
-    shield.scale.set(1.55, 1.5, 0.08)
-    shield.position.set(0, 1.2, -1.05)
-    shield.visible = false
+    const rig = createCharacter(actor.team, {
+      outfit: actor.isPlayer ? this.config.outfitId : 'default',
+      weapon: actor.weaponId,
+      wrap: actor.isPlayer ? this.config.wrapId : 'factory',
+      buddy: actor.isPlayer ? this.config.buddyId : 'none',
+    })
     const chevron = new THREE.Mesh(
       GEO.cone,
       new THREE.MeshBasicMaterial({ color: 0xffe14a, depthTest: false, transparent: true, opacity: 0.95 }),
@@ -654,11 +629,10 @@ export class Match {
     chevron.position.y = 2.45
     chevron.visible = false
     chevron.renderOrder = 6
-    const fortify = new THREE.Mesh(GEO.torus, basic(0xffd056))
-    fortify.rotation.x = Math.PI / 2
-    fortify.position.y = 0.2
-    fortify.scale.setScalar(0.85)
-    fortify.visible = false
+    const veil = new THREE.Mesh(GEO.sphereSm, basic(0x2a1050, 0.72))
+    veil.scale.set(0.42, 0.3, 0.42)
+    veil.position.y = 1.68
+    veil.visible = false
     const flash = new THREE.Mesh(GEO.sphere, basic(0xfff6ea))
     flash.scale.setScalar(0.45)
     flash.position.y = 1.2
@@ -687,9 +661,9 @@ export class Match {
     fill.scale.set(0.8, 0.07, 1)
     bar.add(bg, fill)
     bar.position.y = 1.92
-    rig.group.add(shield, chevron, fortify, flash, label, bar)
+    rig.group.add(chevron, veil, flash, label, bar)
     this.scene.add(rig.group)
-    return { rig, shield, chevron, fortify, flash, label, bar, fill }
+    return { rig, chevron, veil, flash, label, bar, fill }
   }
 
   private startRound(): void {
@@ -730,17 +704,12 @@ export class Match {
       actor.reloadLeft = -1
       actor.fireLeft = 0
       actor.sigCd = 0
-      actor.dashUntil = 0
-      actor.shieldUntil = 0
-      actor.resistUntil = 0
-      actor.resist = 1
       actor.hasteUntil = 0
-      actor.fireRateUntil = 0
+      actor.blindUntil = 0
       actor.vest = false
       actor.protectUntil = 0
       actor.spottedUntil = 0
       actor.knownUntil = 0
-      actor.downUntil = 0
       actor.roundTags = 0
       actor.hurts = []
       actor.ads = false
@@ -771,7 +740,7 @@ export class Match {
   }
 
   private controlPlayer(player: Actor, input: InputState): void {
-    if (player.state !== 'alive' && player.state !== 'downed') return
+    if (player.state !== 'alive') return
     let ix = 0
     let iz = 0
     if (input.keys.has('w')) iz += 1
@@ -789,41 +758,30 @@ export class Match {
       player.wishX = 0
       player.wishZ = 0
     }
-    const sprint = input.keys.has('shift') && player.state === 'alive'
-    player.ads = input.right && player.state === 'alive'
-    let speed = player.state === 'downed' ? 2.15 : sprint ? 8.45 : 6.15
-    if (player.agentId === 'blitz') speed *= 1.08
+    const sprint = input.keys.has('shift')
+    player.ads = input.right
+    let speed = sprint ? 8.45 : 6.15
     if (player.hasteUntil > this.now) speed *= 1.34
     if (player.ads) speed *= weaponById(player.weaponId).adsMove
     player.wishSpeed = len > 0 ? speed : 0
-    player.wantJump = input.keys.has(' ') && player.state === 'alive'
+    player.wantJump = input.keys.has(' ')
   }
 
   private moveActor(actor: Actor, dt: number): void {
     if (actor.state === 'dead') return
-    const dashing = actor.dashUntil > this.now
-    if (dashing) {
-      actor.vx = actor.dashX * 33
-      actor.vz = actor.dashZ * 33
-    } else {
-      let speed = actor.wishSpeed
-      if (!actor.isPlayer && actor.state === 'alive') {
-        if (actor.agentId === 'blitz') speed *= 1.08
-        if (actor.hasteUntil > this.now) speed *= 1.34
-        if (actor.ads) speed *= weaponById(actor.weaponId).adsMove
-      }
-      steer(actor, actor.wishX, actor.wishZ, speed, dt, !actor.onGround)
-      if (actor.wantJump && actor.onGround) {
-        actor.vy = JUMP
-        actor.onGround = false
-      }
+    let speed = actor.wishSpeed
+    if (!actor.isPlayer && actor.state === 'alive') {
+      if (actor.hasteUntil > this.now) speed *= 1.34
+      if (actor.ads) speed *= weaponById(actor.weaponId).adsMove
+    }
+    steer(actor, actor.wishX, actor.wishZ, speed, dt, !actor.onGround)
+    if (actor.wantJump && actor.onGround) {
+      actor.vy = JUMP
+      actor.onGround = false
     }
     actor.wantJump = false
     simulate(actor, dt, this.col, this.gravity)
     actor.moving = Math.hypot(actor.vx, actor.vz) > 1.2
-    if (dashing && Math.floor(this.now * 24) !== Math.floor((this.now - dt) * 24)) {
-      this.splats.add(actor.x, actor.y + 0.05, actor.z, 0, 1, 0, this.paintOf(actor), 0.55)
-    }
   }
 
   private separate(): void {
@@ -865,8 +823,7 @@ export class Match {
     }
     actor.ammo -= 1
     actor.shots += 1
-    const rate = actor.fireRateUntil > this.now ? 0.38 : 1
-    actor.fireLeft = (60 / weapon.rpm) * rate
+    actor.fireLeft = 60 / weapon.rpm
     const { f, r, u } = basis(actor.yaw, actor.pitch)
     const eye = this.eye(actor)
     const ox = eye.x + f.x * 0.45
@@ -941,7 +898,7 @@ export class Match {
     return { x: x / len, y: y / len, z: z / len }
   }
 
-  private spawn(partial: Omit<Projectile, 'id' | 'px' | 'py' | 'pz' | 'age' | 'stickId' | 'stuck' | 'alive'>): void {
+  private spawn(partial: Omit<Projectile, 'id' | 'px' | 'py' | 'pz' | 'age' | 'hitIds' | 'alive'>): void {
     const proj: Projectile = {
       ...partial,
       id: this.projSeq++,
@@ -949,8 +906,7 @@ export class Match {
       py: partial.y,
       pz: partial.z,
       age: 0,
-      stickId: -1,
-      stuck: false,
+      hitIds: [],
       alive: true,
     }
     this.projectiles.push(proj)
@@ -959,21 +915,6 @@ export class Match {
   private updateProjectiles(dt: number): void {
     for (const proj of this.projectiles) {
       if (!proj.alive) continue
-      if (proj.stuck) {
-        if (proj.stickId >= 0) {
-          const host = this.actor(proj.stickId)
-          if (host && host.state !== 'dead') {
-            proj.x = host.x
-            proj.y = host.y + 1.25
-            proj.z = host.z
-          }
-        }
-        proj.age += dt
-        proj.life -= dt
-        if (proj.kind === 'dart') this.pulseDart(proj)
-        if (proj.life <= 0) proj.alive = false
-        continue
-      }
       proj.px = proj.x
       proj.py = proj.y
       proj.pz = proj.z
@@ -987,9 +928,17 @@ export class Match {
       const dy = proj.y - proj.py
       const dz = proj.z - proj.pz
       const length = Math.hypot(dx, dy, dz)
+      if (proj.kind === 'orb') {
+        this.sweepOrb(proj)
+        if (proj.life <= 0) {
+          this.orbBurst(proj.x, proj.y, proj.z)
+          proj.alive = false
+        }
+        continue
+      }
       const world = segmentCast(this.col, proj.px, proj.py, proj.pz, proj.x, proj.y, proj.z)
       let best = world ? world.t : Infinity
-      let mode: 'world' | 'actor' | 'shield' | null = world ? 'world' : null
+      let mode: 'world' | 'actor' | null = world ? 'world' : null
       let victim: Actor | null = null
       let head = false
       let hx = world?.x ?? proj.x
@@ -1000,32 +949,14 @@ export class Match {
       let nz = world?.nz ?? 0
 
       for (const actor of this.actors) {
-        if (actor.shieldUntil < this.now || actor.state === 'dead' || actor.team === proj.team) continue
-        const hit = this.shieldDistance(proj, actor, length)
-        if (hit !== null && hit < best) {
-          best = hit
-          mode = 'shield'
-          const t = length > 0 ? hit / length : 0
-          hx = proj.px + dx * t
-          hy = proj.py + dy * t
-          hz = proj.pz + dz * t
-          const fwd = look(actor.yaw, 0)
-          nx = fwd.x
-          ny = 0
-          nz = fwd.z
-          victim = actor
-        }
-      }
-
-      for (const actor of this.actors) {
         if (actor.team === proj.team || actor.id === proj.ownerId || actor.state === 'dead') continue
-        const feetY = actor.y + (actor.state === 'downed' ? 0.25 : 0.35)
-        const topY = actor.y + (actor.state === 'downed' ? 0.7 : 1.2)
+        const feetY = actor.y + 0.35
+        const topY = actor.y + 1.2
         const body = closestSegments(proj.px, proj.py, proj.pz, proj.x, proj.y, proj.z, actor.x, feetY, actor.z, actor.x, topY, actor.z)
-        const headY = actor.y + (actor.state === 'downed' ? 0.85 : 1.55)
+        const headY = actor.y + 1.55
         const headHit = closestSegments(proj.px, proj.py, proj.pz, proj.x, proj.y, proj.z, actor.x, headY, actor.z, actor.x, headY, actor.z)
         const bodyOk = body.dist <= 0.42 + proj.radius
-        const headOk = actor.state !== 'downed' && headHit.dist <= 0.28 + proj.radius
+        const headOk = headHit.dist <= 0.28 + proj.radius
         if (!bodyOk && !headOk) continue
         const useHead = headOk && (!bodyOk || headHit.s <= body.s)
         const chosen = useHead ? headHit : body
@@ -1050,7 +981,6 @@ export class Match {
         proj.z = hz
         this.resolveImpact(proj, mode, victim, head, hx, hy, hz, nx, ny, nz)
       } else if (proj.life <= 0 || proj.y < -8) {
-        if (proj.kind === 'grenade' || proj.kind === 'cannon') this.explode(proj, proj.x, proj.y, proj.z)
         proj.alive = false
       }
     }
@@ -1058,32 +988,9 @@ export class Match {
     this.syncBalls()
   }
 
-  private shieldDistance(proj: Projectile, actor: Actor, length: number): number | null {
-    const fwd = look(actor.yaw, 0)
-    const cx = actor.x + fwd.x * 1.05
-    const cy = actor.y + 1.2
-    const cz = actor.z + fwd.z * 1.05
-    const dx = proj.x - proj.px
-    const dy = proj.y - proj.py
-    const dz = proj.z - proj.pz
-    const den = dx * fwd.x + dz * fwd.z
-    if (Math.abs(den) < 1e-5) return null
-    const t = ((cx - proj.px) * fwd.x + (cz - proj.pz) * fwd.z) / den
-    if (t < 0 || t > 1) return null
-    const hy = proj.py + dy * t
-    const hx = proj.px + dx * t
-    const hz = proj.pz + dz * t
-    const rightx = Math.cos(actor.yaw)
-    const rightz = -Math.sin(actor.yaw)
-    const lx = (hx - cx) * rightx + (hz - cz) * rightz
-    const ly = hy - cy
-    if (Math.abs(lx) > 0.8 || Math.abs(ly) > 0.78) return null
-    return t * length
-  }
-
   private resolveImpact(
     proj: Projectile,
-    mode: 'world' | 'actor' | 'shield',
+    mode: 'world' | 'actor',
     victim: Actor | null,
     head: boolean,
     x: number,
@@ -1094,31 +1001,6 @@ export class Match {
     nz: number,
   ): void {
     const owner = this.actor(proj.ownerId)
-    if (proj.kind === 'dart') {
-      proj.stuck = true
-      proj.vx = proj.vy = proj.vz = 0
-      proj.gravity = 0
-      if (mode === 'actor' && victim) proj.stickId = victim.id
-      this.splats.add(x, y, z, nx, ny, nz, proj.color, 0.7)
-      if (this.nearPos(x, y, z, 30)) this.audio.splat()
-      return
-    }
-    if (proj.kind === 'pack') {
-      this.pulsePack(proj, x, y, z)
-      proj.alive = false
-      return
-    }
-    if (proj.kind === 'grenade' || proj.kind === 'cannon') {
-      if (proj.age >= proj.arm) this.explode(proj, x, y, z)
-      else proj.alive = false
-      return
-    }
-    if (mode === 'shield') {
-      this.splats.add(x, y, z, nx, ny, nz, proj.color, 0.45)
-      proj.alive = false
-      if (this.nearPos(x, y, z, 28)) this.audio.splat()
-      return
-    }
     if (mode === 'actor' && victim) {
       const traveled = Math.hypot(x - (owner?.x ?? x), y - (owner?.y ?? y), z - (owner?.z ?? z))
       let dmg = proj.damage
@@ -1138,70 +1020,6 @@ export class Match {
       if (this.nearPos(x, y, z, 26)) this.audio.splat()
     }
     proj.alive = false
-  }
-
-  private pulseDart(proj: Projectile): void {
-    if (Math.floor(proj.age * 4) === Math.floor((proj.age - 0.02) * 4)) return
-    const owner = this.actor(proj.ownerId)
-    const extra = owner?.agentId === 'scout' ? 1.4 : 0.4
-    for (const actor of this.actors) {
-      if (actor.team === proj.team || actor.state === 'dead') continue
-      const dist = Math.hypot(actor.x - proj.x, actor.y - proj.y, actor.z - proj.z)
-      const stuck = proj.stickId === actor.id
-      if (stuck || dist < 18) {
-        actor.spottedUntil = Math.max(actor.spottedUntil, this.now + extra)
-        actor.knownUntil = Math.max(actor.knownUntil, this.now + extra)
-      }
-    }
-  }
-
-  private pulsePack(proj: Projectile, x: number, y: number, z: number): void {
-    const owner = this.actor(proj.ownerId)
-    let helped = false
-    for (const actor of this.actors) {
-      if (actor.team !== proj.team || actor.state === 'dead') continue
-      if (Math.hypot(actor.x - x, actor.z - z) > 4.6) continue
-      if (actor.state === 'downed') {
-        this.revive(actor, 55, owner)
-        helped = true
-      } else if (this.heal(actor, 35) > 0) helped = true
-    }
-    if (owner && owner.state === 'alive') {
-      if (!helped) this.heal(owner, 40)
-      else if (Math.hypot(owner.x - x, owner.z - z) < 4.6) this.heal(owner, 15)
-    }
-    this.splats.add(x, y, z, 0, 1, 0, 0x5dff9a, 1.4)
-    if (owner?.isPlayer || this.nearPos(x, y, z, 24)) this.audio.ult()
-  }
-
-  private explode(proj: Projectile, x: number, y: number, z: number): void {
-    proj.alive = false
-    const owner = this.actor(proj.ownerId)
-    const radius = proj.blastRadius
-    const paint = proj.color
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2
-      this.splats.add(x + Math.cos(a) * radius * 0.45, y + 0.05, z + Math.sin(a) * radius * 0.45, 0, 1, 0, paint, 0.7)
-    }
-    for (const actor of this.actors) {
-      if (actor.state === 'dead' || actor.team === proj.team) continue
-      const dist = Math.hypot(actor.x - x, actor.y + 0.8 - y, actor.z - z)
-      if (dist > radius) continue
-      if (!this.clearLine(x, y, z, actor.x, actor.y + 1, actor.z)) continue
-      const fall = 1 - dist / radius
-      const dmg = proj.blast * (0.32 + 0.68 * fall)
-      this.noteHit(proj, false)
-      this.hurt(actor, dmg, owner, false, 'blast')
-    }
-    if (owner && owner.state !== 'dead') {
-      const dist = Math.hypot(owner.x - x, owner.y + 0.8 - y, owner.z - z)
-      if (dist < radius * 0.85) {
-        const fall = 1 - dist / radius
-        const self = Math.min(proj.kind === 'cannon' ? 36 : 24, proj.blast * fall * 0.28)
-        if (self > 6) this.hurt(owner, self, null, false, 'blast')
-      }
-    }
-    if (this.nearPos(x, y, z, 40)) this.audio.explode()
   }
 
   private noteHit(proj: Projectile, head: boolean): void {
@@ -1229,25 +1047,16 @@ export class Match {
     }
   }
 
-  private hurt(target: Actor, amount: number, attacker: Actor | null, head: boolean, cause: 'gun' | 'blast' | 'dash' | 'storm'): void {
+  private hurt(target: Actor, amount: number, attacker: Actor | null, head: boolean, cause: 'gun' | 'storm'): void {
     if (target.state === 'dead' || amount <= 0) return
     if (cause !== 'storm' && target.protectUntil > this.now) return
-    if (cause !== 'storm' && cause !== 'blast' && target.vest) {
+    if (cause !== 'storm' && target.vest) {
       target.vest = false
       this.pushFeed(`${this.label(attacker)} soaked off ${target.isPlayer ? 'your' : `${target.name}'s`} vest`, 'neutral')
       this.splats.add(target.x, target.y + 1.2, target.z, 0, 1, 0, 0xf4f7ff, 0.9)
       return
     }
-    let dmg = amount
-    if (target.resistUntil > this.now) dmg *= target.resist
-    if (target.state === 'downed') {
-      if (cause === 'storm') {
-        target.downUntil -= dtStorm(dmg)
-        return
-      }
-      this.eliminate(target, attacker, 'pop')
-      return
-    }
+    const dmg = amount
     target.hp -= dmg
     if (attacker && attacker !== target) {
       attacker.damage += dmg
@@ -1277,37 +1086,25 @@ export class Match {
       target.hurtFromZ = target.z + dz
       this.pain = Math.min(1, this.pain + 0.08)
     }
-    if (target.hp <= 0) {
-      if (this.canDown(target)) this.drop(target, attacker)
-      else this.eliminate(target, attacker, cause === 'storm' ? 'mist' : 'tag')
-    }
+    if (target.hp <= 0) this.eliminate(target, attacker, cause === 'storm' ? 'mist' : 'tag')
   }
 
-  private canDown(target: Actor): boolean {
-    return this.actors.some((a) => a.team === target.team && a.agentId === 'medic' && a.state === 'alive' && a.id !== target.id)
-  }
-
-  private drop(target: Actor, attacker: Actor | null): void {
-    target.state = 'downed'
-    target.hp = 0
-    target.downUntil = this.now + 8
-    target.downerId = attacker?.id ?? -1
-    target.wishSpeed = 0
-    this.pushFeed(`${this.label(attacker)} dropped ${target.isPlayer ? 'you' : target.name}`, attacker?.team ?? 'neutral')
-    if (target.isPlayer || attacker?.isPlayer) this.audio.down()
-  }
-
-  private eliminate(target: Actor, attacker: Actor | null, how: 'tag' | 'pop' | 'bleed' | 'mist'): void {
+  private eliminate(target: Actor, attacker: Actor | null, how: 'tag' | 'mist'): void {
     if (target.state === 'dead') return
     target.state = 'dead'
     target.hp = 0
     target.deaths += 1
-    const verb = how === 'pop' ? 'popped' : how === 'bleed' ? 'left' : 'tagged'
-    if (how === 'bleed' && !attacker) attacker = this.actor(target.downerId)
-    if (attacker && attacker.id !== target.id && how !== 'bleed') {
+    if (attacker && attacker.id !== target.id) {
       attacker.tags += 1
       attacker.roundTags += 1
       attacker.ult = Math.min(100, attacker.ult + 18)
+      attacker.sigCd = 0
+      if (attacker.isPlayer && (this.config.pcBank + attacker.tags) % PC_PER_TAGS === 0) {
+        this.pcPops += 1
+        this.audio.ult()
+        this.floaters.push({ x: target.x, y: target.y + 2.2, z: target.z, text: '+1 PC', head: true, life: 1.4 })
+        this.pushFeed('+1 Paintball Cap earned', 'blue')
+      }
       const seen = new Set<number>([attacker.id])
       for (const hit of target.hurts) {
         if (this.now - hit.time > 8 || seen.has(hit.id)) continue
@@ -1322,15 +1119,12 @@ export class Match {
       if (attacker.isPlayer && attacker.roundTags >= this.config.teamSize) {
         this.setBanner('CLEAN SWEEP', 'Every opposing marker is down', 1.6)
       }
-    } else if (how === 'bleed' && attacker && attacker.id !== target.id) {
-      attacker.tags += 1
-      attacker.roundTags += 1
     }
     const tone = attacker?.team ?? 'neutral'
-    if (how === 'mist' || (!attacker && how !== 'bleed')) {
+    if (how === 'mist' || !attacker) {
       this.pushFeed(`The mist tagged ${target.isPlayer ? 'you' : target.name}`, 'neutral')
     } else {
-      this.pushFeed(`${this.label(attacker)} ${verb} ${target.isPlayer ? 'you' : target.name}`, tone)
+      this.pushFeed(`${this.label(attacker)} tagged ${target.isPlayer ? 'you' : target.name}`, tone)
     }
     this.burst(target)
     const vis = this.visuals.get(target.id)
@@ -1338,169 +1132,104 @@ export class Match {
     if (target.isPlayer && this.phase === 'live') this.spectateId = this.nextLiving(target.team)
   }
 
-  private heal(actor: Actor, amount: number): number {
-    if (actor.state !== 'alive') return 0
-    const before = actor.hp
-    actor.hp = Math.min(100, actor.hp + amount)
-    return actor.hp - before
-  }
-
-  private revive(actor: Actor, hp: number, medic: Actor | null): void {
-    actor.state = 'alive'
-    actor.hp = hp
-    actor.downUntil = 0
-    actor.protectUntil = this.now + 0.55
-    const vis = this.visuals.get(actor.id)
-    if (vis && !actor.isPlayer) vis.rig.group.visible = true
-    if (medic && medic.state !== 'dead') {
-      medic.revives += 1
-      medic.ult = Math.min(100, medic.ult + 12)
-    }
-    this.pushFeed(`${actor.isPlayer ? 'You are' : `${actor.name} is`} back in`, actor.team)
-  }
-
   private signature(actor: Actor): void {
     if (this.phase !== 'live' || actor.state !== 'alive' || actor.sigCd > 0) return
-    const agent = agentById(actor.agentId)
-    actor.sigCd = agent.cd
-    if (actor.agentId === 'blitz') {
-      const dir = look(actor.yaw, 0)
-      actor.dashUntil = this.now + 0.2
-      actor.dashX = dir.x
-      actor.dashZ = dir.z
-      actor.dashHits = []
-      if (actor.isPlayer) this.audio.dash()
-    } else if (actor.agentId === 'guardian') {
-      actor.shieldUntil = this.now + 3.2
-      if (actor.isPlayer) this.audio.shoot('ability')
-    } else if (actor.agentId === 'scout') {
-      const dir = look(actor.yaw, actor.pitch)
-      const eye = this.eye(actor)
-      this.spawn({
-        kind: 'dart',
-        ownerId: actor.id,
-        team: actor.team,
-        weaponId: 'ability',
-        shotId: this.shotSeq++,
-        x: eye.x + dir.x * 0.6,
-        y: eye.y + dir.y * 0.6,
-        z: eye.z + dir.z * 0.6,
-        vx: dir.x * 48,
-        vy: dir.y * 48,
-        vz: dir.z * 48,
-        gravity: 6 * this.projGravityScale,
-        radius: 0.1,
-        damage: 0,
-        blast: 0,
-        blastRadius: 0,
-        life: 8,
-        arm: 0,
-        color: 0xb388ff,
-      })
-      if (actor.isPlayer) this.audio.shoot('ability')
-    } else if (actor.agentId === 'splatter') {
-      this.lob(actor, 'grenade', 16, 7.5, 52, 5.2, 0xff4d8d, 0.16)
-    } else {
-      this.lob(actor, 'pack', 14, 6.5, 0, 0, 0x5dff9a, 0.18)
+    const f = look(actor.yaw, 0)
+    let reach = STEP_RANGE
+    for (const h of [0.3, 0.95, 1.6]) {
+      const y = actor.y + h
+      const hit = segmentCast(this.col, actor.x, y, actor.z, actor.x + f.x * STEP_RANGE, y, actor.z + f.z * STEP_RANGE)
+      if (hit) reach = Math.min(reach, hit.t - 0.75)
     }
+    const b = this.map.bounds
+    const tx = clamp(actor.x + f.x * reach, b.minX + 1, b.maxX - 1)
+    const tz = clamp(actor.z + f.z * reach, b.minZ + 1, b.maxZ - 1)
+    if (Math.hypot(tx - actor.x, tz - actor.z) < 2) return
+    actor.sigCd = VESPER.cd
+    this.inkPuff(actor.x, actor.y, actor.z)
+    actor.x = tx
+    actor.z = tz
+    actor.y = Math.max(actor.y, standHeight(this.col, tx, tz))
+    actor.vx *= 0.3
+    actor.vz *= 0.3
+    depenetrate(actor, this.col)
+    this.inkPuff(actor.x, actor.y, actor.z)
+    if (actor.isPlayer) this.audio.dash()
+    else if (this.near(actor, 30)) this.audio.dash()
   }
 
   private ultimate(actor: Actor): void {
     if (this.phase !== 'live' || actor.state !== 'alive' || actor.ult < 100) return
     actor.ult = 0
     if (actor.isPlayer || this.near(actor, 30)) this.audio.ult()
-    if (actor.agentId === 'blitz') {
-      actor.fireRateUntil = this.now + 7
-      actor.ammo = actor.mag
-      actor.reloadLeft = -1
-      this.setBanner(actor.isPlayer ? 'TRIGGER STORM' : `${actor.name} is hot`, 'Fire rate up', 1.2)
-    } else if (actor.agentId === 'guardian') {
-      actor.resistUntil = this.now + 6
-      actor.resist = 0.5
-      actor.shieldUntil = Math.max(actor.shieldUntil, this.now + 6)
-      for (const mate of this.actors) {
-        if (mate.team !== actor.team || mate.id === actor.id || mate.state !== 'alive') continue
-        if (Math.hypot(mate.x - actor.x, mate.z - actor.z) > 8) continue
-        mate.resistUntil = this.now + 6
-        mate.resist = Math.min(mate.resist, 0.75)
-      }
-      this.setBanner(actor.isPlayer ? 'FORTIFY' : `${actor.name} fortifies`, 'Damage cut in half', 1.2)
-    } else if (actor.agentId === 'scout') {
-      for (const enemy of this.actors) {
-        if (enemy.team === actor.team || enemy.state === 'dead') continue
-        enemy.spottedUntil = Math.max(enemy.spottedUntil, this.now + 5)
-        enemy.knownUntil = Math.max(enemy.knownUntil, this.now + 5)
-      }
-      this.setBanner(actor.isPlayer ? 'FULL SCAN' : `${actor.name} scans`, 'Everyone is marked', 1.2)
-    } else if (actor.agentId === 'splatter') {
-      const dir = look(actor.yaw, actor.pitch)
-      const eye = this.eye(actor)
-      this.spawn({
-        kind: 'cannon',
-        ownerId: actor.id,
-        team: actor.team,
-        weaponId: 'ability',
-        shotId: this.shotSeq++,
-        x: eye.x + dir.x * 0.8,
-        y: eye.y + dir.y * 0.8,
-        z: eye.z + dir.z * 0.8,
-        vx: dir.x * 32,
-        vy: dir.y * 32 + 2,
-        vz: dir.z * 32,
-        gravity: 5 * this.projGravityScale,
-        radius: 0.32,
-        damage: 0,
-        blast: 80,
-        blastRadius: 6.4,
-        life: 3,
-        arm: 0.12,
-        color: this.paintOf(actor),
-      })
-    } else {
-      for (const mate of this.actors) {
-        if (mate.team !== actor.team || mate.state === 'dead') continue
-        if (mate.state === 'downed') this.revive(mate, 50, actor)
-        else this.heal(mate, 40)
-      }
-      this.setBanner(actor.isPlayer ? 'TEAM HEAL' : `${actor.name} heals`, 'Fresh paint for the squad', 1.2)
-    }
-  }
-
-  private lob(actor: Actor, kind: 'grenade' | 'pack', speed: number, lift: number, blast: number, radius: number, color: number, size: number): void {
     const dir = look(actor.yaw, actor.pitch)
     const eye = this.eye(actor)
     this.spawn({
-      kind,
+      kind: 'orb',
       ownerId: actor.id,
       team: actor.team,
       weaponId: 'ability',
       shotId: this.shotSeq++,
-      x: eye.x + dir.x * 0.7,
-      y: eye.y + dir.y * 0.7,
-      z: eye.z + dir.z * 0.7,
-      vx: dir.x * speed + actor.vx * 0.25,
-      vy: dir.y * speed + lift,
-      vz: dir.z * speed + actor.vz * 0.25,
-      gravity: 14 * this.projGravityScale,
-      radius: size,
+      x: eye.x + dir.x * 0.8,
+      y: eye.y + dir.y * 0.8,
+      z: eye.z + dir.z * 0.8,
+      vx: dir.x * 24,
+      vy: dir.y * 24,
+      vz: dir.z * 24,
+      gravity: 0,
+      radius: 0.42,
       damage: 0,
-      blast,
-      blastRadius: radius,
-      life: 2.4,
-      arm: 0.12,
-      color,
+      blast: 0,
+      blastRadius: ORB_RADIUS,
+      life: 1.9,
+      arm: 0,
+      color: 0x7a3cff,
     })
-    if (actor.isPlayer) this.audio.shoot('ability')
+    if (actor.isPlayer) this.setBanner('BLACKOUT', 'The orb drifts through walls', 1.1)
   }
 
-  private dashTouch(actor: Actor): void {
-    for (const other of this.actors) {
-      if (other.team === actor.team || other.state === 'dead' || actor.dashHits.includes(other.id)) continue
-      if (Math.hypot(other.x - actor.x, other.z - actor.z) > 1.35) continue
-      if (Math.abs(other.y - actor.y) > 1.4) continue
-      actor.dashHits.push(other.id)
-      this.hurt(other, 18, actor, false, 'dash')
+  private sweepOrb(proj: Projectile): void {
+    for (const actor of this.actors) {
+      if (actor.team === proj.team || actor.state === 'dead' || proj.hitIds.includes(actor.id)) continue
+      const near = closestSegments(proj.px, proj.py, proj.pz, proj.x, proj.y, proj.z, actor.x, actor.y + 0.4, actor.z, actor.x, actor.y + 1.6, actor.z)
+      if (near.dist > proj.blastRadius) continue
+      proj.hitIds.push(actor.id)
+      actor.blindUntil = Math.max(actor.blindUntil, this.now + BLIND_TIME)
+      actor.aimReadyAt = Math.max(actor.aimReadyAt, this.now + BLIND_TIME)
+      actor.targetId = -1
+      const owner = this.actor(proj.ownerId)
+      if (owner) owner.ult = Math.min(100, owner.ult + 4)
+      if (actor.isPlayer) {
+        this.pain = Math.min(1, this.pain + 0.3)
+        this.setBanner('BLINDED', 'Back off and wait it out', 1.2)
+      } else if (owner?.isPlayer) {
+        this.floaters.push({ x: actor.x, y: actor.y + 1.9, z: actor.z, text: 'BLIND', head: false, life: 0.9 })
+      }
     }
+    if (Math.floor(proj.age * 20) !== Math.floor((proj.age - 0.05) * 20)) {
+      this.splats.add(proj.x, Math.max(0.05, standHeight(this.col, proj.x, proj.z) + 0.05), proj.z, 0, 1, 0, 0x3a1670, 0.5)
+    }
+  }
+
+  private orbBurst(x: number, y: number, z: number): void {
+    for (let i = 0; i < 14; i++) {
+      const mesh = new THREE.Mesh(GEO.sphere, basic(i % 3 === 0 ? 0xb48cff : 0x24104a))
+      mesh.scale.setScalar(0.2 + Math.random() * 0.25)
+      mesh.position.set(x, y, z)
+      this.scene.add(mesh)
+      this.bits.push({ mesh, vx: (Math.random() - 0.5) * 6, vy: 1 + Math.random() * 3, vz: (Math.random() - 0.5) * 6, life: 0.7 + Math.random() * 0.3 })
+    }
+  }
+
+  private inkPuff(x: number, y: number, z: number): void {
+    for (let i = 0; i < 12; i++) {
+      const mesh = new THREE.Mesh(GEO.sphere, basic(i % 4 === 0 ? 0x8fd3ff : 0x1c1230))
+      mesh.scale.setScalar(0.18 + Math.random() * 0.22)
+      mesh.position.set(x + (Math.random() - 0.5) * 0.5, y + 0.3 + Math.random() * 1.4, z + (Math.random() - 0.5) * 0.5)
+      this.scene.add(mesh)
+      this.bits.push({ mesh, vx: (Math.random() - 0.5) * 3, vy: 1.5 + Math.random() * 2, vz: (Math.random() - 0.5) * 3, life: 0.45 + Math.random() * 0.3 })
+    }
+    this.splats.add(x, y + 0.05, z, 0, 1, 0, 0x1c1230, 0.9)
   }
 
   private updatePickups(): void {
@@ -1646,7 +1375,6 @@ export class Match {
         shots: p.shots,
         hits: p.hits,
         headshots: p.headshots,
-        revives: p.revives,
       },
     })
   }
@@ -1684,10 +1412,10 @@ export class Match {
       this.view.visible = false
       return
     }
-    const eye = player.state === 'downed' ? 0.62 : EYE
+    const eye = EYE
     let bob = 0
     let roll = 0
-    if (controls.bob && player.onGround && player.moving && player.state === 'alive') {
+    if (controls.bob && player.onGround && player.moving) {
       bob = Math.sin(this.now * 10) * 0.035
       roll = Math.sin(this.now * 5) * 0.012
     }
@@ -1696,18 +1424,23 @@ export class Match {
     this.camera.rotation.y = player.yaw
     this.camera.rotation.x = -player.pitch + this.recoil + this.pain * 0.02
     this.camera.rotation.z = roll
-    const scoped = player.ads && player.state === 'alive'
+    const scoped = player.ads
     const targetFov = scoped ? weaponById(player.weaponId).adsFov : 74
     this.fov = lerp(this.fov, targetFov, 1 - Math.exp(-12 * dt))
     if (Math.abs(this.camera.fov - this.fov) > 0.05) {
       this.camera.fov = this.fov
       this.camera.updateProjectionMatrix()
     }
-    const hideGun = player.weaponId === 'sniper' && scoped || player.state === 'downed'
-    this.view.visible = !hideGun
+    this.view.visible = !(player.weaponId === 'sniper' && scoped)
     const reloadDip = player.reloadLeft > 0 ? Math.sin((1 - player.reloadLeft / weaponById(player.weaponId).reload) * Math.PI) : 0
     this.view.position.set(0.26, -0.2 - bob * 0.25 - reloadDip * 0.08, -0.42 + this.recoil)
     this.view.rotation.set(reloadDip * 0.8, 0.04, 0)
+    const buddy = this.view.getObjectByName('buddy')
+    if (buddy) {
+      const strafe = player.vx * Math.cos(player.yaw) - player.vz * Math.sin(player.yaw)
+      this.buddySwing = lerp(this.buddySwing, clamp(-strafe * 0.06, -0.6, 0.6), 1 - Math.exp(-6 * dt))
+      buddy.rotation.z = this.buddySwing + Math.sin(this.now * 2.4) * 0.08
+    }
   }
 
   private updateVisuals(dt: number): void {
@@ -1716,27 +1449,20 @@ export class Match {
       if (!vis) continue
       vis.rig.group.position.set(actor.x, actor.y, actor.z)
       vis.rig.group.rotation.y = actor.yaw
-      vis.rig.update(this.now, actor.moving, actor.state === 'downed')
+      vis.rig.update(this.now, actor.moving)
       vis.rig.group.visible = actor.state !== 'dead'
       const body = vis.rig.group.getObjectByName('agent-body')
       if (body) body.visible = !actor.isPlayer
-      vis.shield.visible = actor.shieldUntil > this.now && actor.state !== 'dead'
-      vis.fortify.visible = actor.resistUntil > this.now && actor.state === 'alive'
+      vis.veil.visible = actor.blindUntil > this.now && actor.state === 'alive' && !actor.isPlayer
       vis.flash.visible = actor.flashUntil > this.now && !actor.isPlayer
       const spotted = actor.team === 'orange' && actor.spottedUntil > this.now && actor.state !== 'dead'
       vis.chevron.visible = spotted
       const showInfo = !actor.isPlayer && actor.state !== 'dead' && (actor.team === 'blue' || spotted || actor.hurtUntil > this.now)
       vis.label.visible = showInfo && actor.team === 'blue'
       vis.bar.visible = showInfo
-      if (actor.state === 'downed') {
-        const pct = clamp((actor.downUntil - this.now) / 8, 0, 1)
-        vis.fill.scale.x = Math.max(0.05, 0.8 * pct)
-        vis.fill.position.x = (vis.fill.scale.x - 0.8) * 0.5
-      } else {
-        const pct = clamp(actor.hp / 100, 0, 1)
-        vis.fill.scale.x = Math.max(0.02, 0.8 * pct)
-        vis.fill.position.x = (vis.fill.scale.x - 0.8) * 0.5
-      }
+      const pct = clamp(actor.hp / 100, 0, 1)
+      vis.fill.scale.x = Math.max(0.02, 0.8 * pct)
+      vis.fill.position.x = (vis.fill.scale.x - 0.8) * 0.5
       vis.bar.lookAt(this.camera.position)
       void dt
     }
@@ -1759,8 +1485,7 @@ export class Match {
       mesh.visible = true
       const mat = mesh.material as THREE.MeshBasicMaterial
       mat.color.setHex(proj.color)
-      const s = proj.kind === 'cannon' ? 0.34 : proj.kind === 'grenade' ? 0.18 : proj.kind === 'pack' ? 0.2 : proj.radius
-      mesh.scale.setScalar(s)
+      mesh.scale.setScalar(proj.kind === 'orb' ? proj.radius * (1 + Math.sin(proj.age * 18) * 0.12) : proj.radius)
       mesh.position.set(proj.x, proj.y, proj.z)
       n += 1
     }
@@ -1871,7 +1596,7 @@ export class Match {
 
   private los(from: Actor, to: Actor): boolean {
     if (to.state === 'dead') return false
-    return this.clearLine(from.x, from.y + EYE, from.z, to.x, to.y + (to.state === 'downed' ? 0.5 : 1.15), to.z)
+    return this.clearLine(from.x, from.y + EYE, from.z, to.x, to.y + 1.15, to.z)
   }
 
   private clearLine(ax: number, ay: number, az: number, bx: number, by: number, bz: number): boolean {
@@ -1882,7 +1607,7 @@ export class Match {
   }
 
   private eye(actor: Actor) {
-    return { x: actor.x, y: actor.y + (actor.state === 'downed' ? 0.55 : EYE), z: actor.z }
+    return { x: actor.x, y: actor.y + EYE, z: actor.z }
   }
 
   private actor(id: number): Actor | null {
@@ -1932,8 +1657,4 @@ export class Match {
       ?? this.actors.find((a) => a.state !== 'dead' && !a.isPlayer)?.id
       ?? -1
   }
-}
-
-function dtStorm(dmg: number): number {
-  return dmg * 0.08
 }

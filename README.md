@@ -1,6 +1,6 @@
 # Paintball Verse
 
-A first-person paintball shooter in the browser. Pick an agent, drop into a best-of-five against bots, and stay inside the shrinking paint mist. Getting tagged eliminates you — no blood, just splatter. First team to wipe the other takes the round.
+A first-person paintball shooter in the browser. Suit up as Vesper, drop into a best-of-five against bots, and stay inside the shrinking paint mist. Getting tagged eliminates you — no blood, just splatter. First team to wipe the other takes the round.
 
 ## Play
 
@@ -29,8 +29,8 @@ Progress, rank, and settings are stored in this browser (`localStorage`). No acc
 | Left click | Fire |
 | Right click | Focus / 4× scope on the Sniper Pump |
 | R | Reload (about 2–3 seconds) |
-| Q | Signature ability |
-| X | Ultimate |
+| Q | Shade Step |
+| X | Blackout |
 | Middle click | Ping a spot for your squad |
 | T | Victory spray |
 | Tab | Scoreboard |
@@ -38,17 +38,38 @@ Progress, rank, and settings are stored in this browser (`localStorage`). No acc
 
 Click the game to capture the mouse. Paintballs have travel time and a little drop. Body tags from the Rapid Marker land around 26–36 damage. Headshots hit twice as hard. The Sniper Pump removes a full health bar. The Splash Blaster throws an eight-ball spread.
 
-## Agents
+## Lobby
 
-- **Blitz** — Paint Dash, Trigger Storm (fire rate)
-- **Guardian** — Splatter Shield, Fortify
-- **Scout** — Recon Dart that sticks to walls and marks through cover, Full Scan
-- **Splatter** — Paint Grenade, Paint Cannon
-- **Medic** — Revive Pack. While a Medic is standing, a fatal tag drops that team into a short crawl instead of an instant burst. A second hit pops them.
+The menu is a Fortnite-style lobby with four tabs:
+
+- **Play** shows your character on the platform. Use the mode card to switch between Quick Match, Ranked, Custom Lobby, and the bonus arenas, then hit the yellow PLAY button. The empty party slots open the custom lobby code.
+- **Locker** has slots for your outfit, marker, wrap, gun buddy, spray, and paint. Drag the character to spin it.
+- **Item Shop** sells cosmetics for Paintball Caps.
+- **Career** shows your level, rank ladder, record, and recent matches.
+
+## Agent
+
+Every player and bot is **Vesper**, a hooded shade:
+
+- **Q · Shade Step** — teleport up to 14 m toward the crosshair. It stops short of walls.
+- **X · Blackout** — throw a violet orb that drifts through walls. Every enemy it brushes is blinded for about three seconds.
+- **Passive · Echo** — landing a tag refreshes Shade Step.
+
+## Paintball Caps (PC)
+
+You earn 1 PC for every 3 tags, in any mode. Partial progress carries over between matches. The in-match chip under the minimap shows caps earned and progress toward the next one.
+
+The Item Shop's featured bundle is **Evori Dream Wings** (20 PC, or 34 PC bought separately):
+
+- Evori Dream Wings outfit: pearl cloak with glass butterfly wings (12 PC)
+- Evori Dreamwing marker wrap with wing fins (9 PC)
+- Lumi the Star Cat gun buddy (6 PC)
+- Evori Flutter spray (3 PC)
+- Aurora Dream paint (4 PC)
 
 ## Modes
 
-**Quick match** is 5v5, best of five, storm on. Rookie bots rush and miss. Veterans take cover. Champions flank, focus fire, and use their kits.
+**Quick match** is 5v5, best of five, storm on. Rookie bots rush and miss. Veterans take cover and Shade Step in. Champions flank, focus fire, and Blackout you.
 
 **Custom lobby** builds a shareable code (`PV-...`) for the map, bot difficulty, team size, round length, storm, low gravity, and one-gun rounds. Enter a friend's code to play that same ruleset. The match runs locally: bots fill every other slot. There is no live network session.
 
@@ -66,5 +87,3 @@ Speed gel, extra hoppers, and impact vests spawn on the maps. An impact vest soa
 ## Maps
 
 Warehouse, Canyon, City Block, Pine Forest, Skate Park, and Paint Stadium, plus the two bonus arenas above.
-
-# Paint-ball-verse

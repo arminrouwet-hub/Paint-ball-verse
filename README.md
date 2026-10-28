@@ -66,3 +66,5 @@ Speed gel, extra hoppers, and impact vests spawn on the maps. An impact vest soa
 ## Maps
 
 Warehouse, Canyon, City Block, Pine Forest, Skate Park, and Paint Stadium, plus the two bonus arenas above.
+
+# Paint-ball-verse

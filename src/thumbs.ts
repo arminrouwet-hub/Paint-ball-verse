@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { cosmetic, type Bundle } from './content.ts'
-import { createBuddy, createCharacter, createWeapon } from './characters.ts'
+import { createBuddy, createWeapon } from './characters.ts'
+import { cardArt } from './cards.ts'
 import { makeSprayTexture } from './effects.ts'
 import type { WeaponId } from './types.ts'
 
@@ -57,16 +58,8 @@ export function itemThumb(id: string, wrap = 'factory'): string {
   if (hit !== undefined) return hit
   const item = cosmetic(id)
   let url = ''
-  if (item.kind === 'outfit') {
-    const scene = stage()
-    const rig = createCharacter('blue', { outfit: id, weapon: 'rapid', wrap: 'factory', buddy: 'none' })
-    rig.group.rotation.y = Math.PI - 0.4
-    rig.update(0.6, false)
-    scene.add(rig.group)
-    const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 20)
-    cam.position.set(0, 1.4, 3.8)
-    cam.lookAt(0, 1.18, 0)
-    url = shoot(scene, cam, 256, 256)
+  if (item.kind === 'card') {
+    url = cardArt(id, 'tall')
   } else if (item.kind === 'wrap') {
     url = weaponThumb('rapid', id, 'none')
   } else if (item.kind === 'buddy') {
@@ -179,25 +172,24 @@ export function bundleArt(bundle: Bundle): string {
   const hit = cache.get(key)
   if (hit !== undefined) return hit
   const scene = stage()
-  const rig = createCharacter('blue', { outfit: 'evori', weapon: 'rapid', wrap: 'dreamwings', buddy: 'lumi' })
-  rig.update(1.1, false)
-  rig.group.rotation.y = Math.PI - 0.55
-  scene.add(rig.group)
-  const gun = createWeapon('splash', 'dreamwings', 'none')
-  gun.scale.setScalar(1.9)
-  gun.position.set(-1.3, 1.45, 0.2)
-  gun.rotation.set(0.15, Math.PI / 2 + 0.5, 0.25)
-  scene.add(gun)
+  const rapid = createWeapon('rapid', 'dreamwings', 'none')
+  rapid.scale.setScalar(2.3)
+  rapid.position.set(-0.55, 1.75, 0)
+  rapid.rotation.set(0.1, Math.PI / 2 + 0.35, 0.2)
+  const splash = createWeapon('splash', 'dreamwings', 'none')
+  splash.scale.setScalar(2.1)
+  splash.position.set(-0.75, 0.95, 0.3)
+  splash.rotation.set(0.15, Math.PI / 2 + 0.5, -0.15)
   const sniper = createWeapon('sniper', 'dreamwings', 'none')
-  sniper.scale.setScalar(1.5)
-  sniper.position.set(-0.9, 2.15, -0.6)
-  sniper.rotation.set(0, Math.PI / 2 - 0.3, 0.35)
-  scene.add(sniper)
+  sniper.scale.setScalar(1.7)
+  sniper.position.set(0.15, 2.35, -0.6)
+  sniper.rotation.set(0, Math.PI / 2 - 0.25, 0.3)
+  scene.add(rapid, splash, sniper)
   const lumi = createBuddy('lumi')
   if (lumi) {
-    lumi.scale.setScalar(4.2)
-    lumi.position.set(1.15, 2.05, 0.6)
-    lumi.rotation.y = Math.PI - 0.3
+    lumi.scale.setScalar(6.5)
+    lumi.position.set(1.2, 2.5, 0.5)
+    lumi.rotation.y = Math.PI - 0.35
     scene.add(lumi)
   }
   const cam = new THREE.PerspectiveCamera(34, 16 / 10, 0.1, 30)

@@ -52,7 +52,7 @@ const input: InputState = {
   pauseEdge: false,
 }
 
-const menu = new MenuScene({ outfit: save.equipped.outfit, weapon: save.equipped.weapon, wrap: save.equipped.wrap, buddy: save.equipped.buddy })
+const menu = new MenuScene({ weapon: save.equipped.weapon, wrap: save.equipped.wrap, buddy: save.equipped.buddy })
 let match: Match | null = null
 let paused = false
 let posted = false

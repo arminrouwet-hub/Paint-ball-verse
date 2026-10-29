@@ -1,5 +1,6 @@
 import {
   BUNDLES,
+  DAILY_OFFERS,
   PC_PER_TAGS,
   TIERS,
   VESPER,
@@ -22,6 +23,7 @@ import type { Difficulty, FrameState, MatchConfig, MatchResult, WeaponId } from 
 import type { Look } from './characters.ts'
 import type { LobbyView } from './menuScene.ts'
 import { bundleArt, itemThumb, weaponThumb } from './thumbs.ts'
+import { cardArt } from './cards.ts'
 import { esc, formatTime } from './util.ts'
 
 export type UiHooks = {
@@ -43,18 +45,18 @@ type Mode = 'quick' | 'ranked' | 'custom'
 type Slot = ItemKind | 'marker'
 
 const SLOTS: { id: Slot; label: string }[] = [
-  { id: 'outfit', label: 'Outfit' },
   { id: 'marker', label: 'Marker' },
-  { id: 'wrap', label: 'Wrap' },
-  { id: 'buddy', label: 'Buddy' },
+  { id: 'wrap', label: 'Gun Skin' },
+  { id: 'buddy', label: 'Gun Buddy' },
+  { id: 'card', label: 'Player Card' },
   { id: 'spray', label: 'Spray' },
   { id: 'paint', label: 'Paint' },
 ]
 
 const KIND_LABEL: Record<ItemKind, string> = {
-  outfit: 'Outfit',
-  wrap: 'Marker Wrap',
+  wrap: 'Gun Skin',
   buddy: 'Gun Buddy',
+  card: 'Player Card',
   spray: 'Spray',
   paint: 'Paint',
 }
@@ -115,7 +117,7 @@ export class Ui {
       codeInput: '',
       error: '',
       confirmReset: false,
-      slot: 'outfit',
+      slot: 'wrap',
       buy: null,
     }
     root.innerHTML = `
@@ -196,6 +198,7 @@ export class Ui {
     const save = this.hooks.save()
     post.innerHTML = `
       <div class="panel">
+        <div class="post-card" style="background-image:url(${cardArt(save.equipped.card, 'wide')})"><b>${esc(save.name)}</b><span>LVL ${level.level}</span></div>
         <h2 class="${result.won ? 'win' : 'loss'}">${result.won ? 'MATCH WON' : 'MATCH LOST'}</h2>
         <p class="sub">${esc(result.mapName)} · ${esc(result.difficulty)} · ${result.blue}–${result.orange}</p>
         <div class="stats">
@@ -323,7 +326,7 @@ export class Ui {
       const blue = frame.rows.filter((r) => r.team === 'blue')
       const orange = frame.rows.filter((r) => r.team === 'orange')
       const row = (r: FrameState['rows'][number]) =>
-        `<tr class="${r.you ? 'you' : ''}"><td class="team-${r.team}">${esc(r.name)}${r.state === 'dead' ? ' · out' : ''}</td><td>${esc(r.weapon)}</td><td>${r.tags}</td><td>${r.deaths}</td><td>${r.assists}</td><td>${r.damage}</td></tr>`
+        `<tr class="${r.you ? 'you' : ''}"><td class="team-${r.team}"><img class="mini-card" src="${cardArt(r.card, 'wide')}" alt="" />${esc(r.name)}${r.state === 'dead' ? ' · out' : ''}</td><td>${esc(r.weapon)}</td><td>${r.tags}</td><td>${r.deaths}</td><td>${r.assists}</td><td>${r.damage}</td></tr>`
       board.innerHTML = `<table><thead><tr><th>PLAYER</th><th>MARKER</th><th>TAGS</th><th>OUT</th><th>AST</th><th>DMG</th></tr></thead><tbody>${[...blue, ...orange].map(row).join('')}</tbody></table>`
     }
     const nodes = [...this.floaters.children] as HTMLElement[]
@@ -345,7 +348,6 @@ export class Ui {
   private look(): Look {
     const save = this.hooks.save()
     return {
-      outfit: save.equipped.outfit,
       weapon: save.equipped.weapon,
       wrap: save.equipped.wrap,
       buddy: save.equipped.buddy,
@@ -403,7 +405,7 @@ export class Ui {
     return `
       <button type="button" class="party-slot left" data-act="party"><span>+</span><small>INVITE WITH CODE</small></button>
       <button type="button" class="party-slot right" data-act="party"><span>+</span><small>INVITE WITH CODE</small></button>
-      <div class="nameplate"><b>${esc(save.name)}</b><span>${save.equipped.outfit === 'default' ? esc(VESPER.name) : `${esc(VESPER.name)} · ${esc(cosmetic(save.equipped.outfit).name)}`}</span></div>
+      <button type="button" class="nameplate" data-act="cardslot" style="background-image:url(${cardArt(save.equipped.card, 'wide')})"><b>${esc(save.name)}</b><span>LVL ${level.level} · ${esc(VESPER.name)}</span></button>
       <aside class="kit-card">
         <div class="kicker">YOUR AGENT</div>
         <h3>${esc(VESPER.name)} <small>${esc(VESPER.role)}</small></h3>
@@ -574,7 +576,8 @@ export class Ui {
       </div>
       <div class="shop-grid">
         <button type="button" class="bundle-tile${ownedAll ? ' owned' : ''}" data-act="buy:bundle:${bundle.id}">
-          <img src="${bundleArt(bundle)}" alt="Evori Dream Wings bundle: pearl cloak with butterfly wings, pastel markers, and Lumi the star cat" />
+          <img src="${bundleArt(bundle)}" alt="Evori Dream Wings bundle: pearl markers with butterfly wings and Lumi the star cat" />
+          <img class="bundle-card" src="${cardArt('evoricard', 'tall')}" alt="" />
           <div class="bundle-info">
             <span class="badge">FEATURED BUNDLE · ${items.length} ITEMS</span>
             <b>${esc(bundle.name)}</b>
@@ -585,6 +588,10 @@ export class Ui {
         <div class="shop-items">
           ${items.map((item) => this.shopTile(item, save)).join('')}
         </div>
+      </div>
+      <div class="shop-daily">
+        <div class="section-label">Daily offers · gun buddies</div>
+        <div class="shop-items daily">${DAILY_OFFERS.map((id) => this.shopTile(cosmetic(id), save)).join('')}</div>
       </div>
     </section>`
   }
@@ -635,6 +642,7 @@ export class Ui {
       art = itemThumb(item.id)
       title = item.name
       sub = `${KIND_LABEL[item.kind]}${item.bundle ? ' · Evori Dream Wings set' : ''}`
+      if (item.kind === 'card') art = cardArt(item.id, 'tall')
       blurb = item.blurb
       price = item.price ?? 0
       owned = owns(save, item.id)
@@ -674,6 +682,7 @@ export class Ui {
       : '<p class="note">No matches yet. Hit PLAY and your history shows up here.</p>'
     return `<section class="career">
       <h2>CAREER</h2>
+      <div class="post-card" style="background-image:url(${cardArt(save.equipped.card, 'wide')})"><b>${esc(save.name)}</b><span>LVL ${level.level} · ${esc(cosmetic(save.equipped.card).name)}</span></div>
       <div class="career-cards">
         <div class="ccard"><span class="kicker">LEVEL</span><b>${level.level}</b><div class="bar"><i style="width:${Math.round((level.into / level.next) * 100)}%"></i></div><small>${level.into}/${level.next} XP</small></div>
         <div class="ccard"><span class="kicker">RANK</span><b style="color:${rank.color}">${esc(rank.name)}</b><div class="bar"><i style="width:${Math.min(100, Math.round((rank.into / rank.span) * 100))}%;background:${rank.color}"></i></div><small>${save.sr} SR${rank.next ? ` · ${rank.span - rank.into} to ${rank.next}` : ''}</small></div>
@@ -774,6 +783,11 @@ export class Ui {
     } else if (act.startsWith('mode:')) this.draft.mode = act.slice(5) as Mode
     else if (act.startsWith('diff:')) this.draft.difficulty = act.slice(5) as Difficulty
     else if (act.startsWith('slot:')) this.draft.slot = act.slice(5) as Slot
+    else if (act === 'cardslot') {
+      this.tab = 'locker'
+      this.draft.slot = 'card'
+      this.hooks.view('locker')
+    }
     else if (act.startsWith('weapon:')) {
       const id = act.slice(7) as WeaponId
       this.hooks.patch((next) => {
@@ -800,7 +814,7 @@ export class Ui {
         } else this.flash(`${item.name} unlocks at level ${item.level}`)
       } else {
         this.hooks.patch((next) => {
-          if (kind === 'outfit' || kind === 'wrap' || kind === 'buddy' || kind === 'paint' || kind === 'spray') next.equipped[kind] = id
+          if (kind === 'card' || kind === 'wrap' || kind === 'buddy' || kind === 'paint' || kind === 'spray') next.equipped[kind] = id
         })
         this.hooks.preview(this.look())
       }
@@ -955,7 +969,7 @@ export class Ui {
       onegun,
       weaponId: onegun ? oneGunWeapon(seed) : save.equipped.weapon,
       agentId: VESPER.id,
-      outfitId: save.equipped.outfit,
+      cardId: save.equipped.card,
       wrapId: save.equipped.wrap,
       paintId: save.equipped.paint,
       sprayId: save.equipped.spray,

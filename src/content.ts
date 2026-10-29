@@ -235,7 +235,7 @@ export function difficultyForSr(sr: number): Difficulty {
   return 'rookie'
 }
 
-export type ItemKind = 'outfit' | 'wrap' | 'buddy' | 'spray' | 'paint'
+export type ItemKind = 'wrap' | 'buddy' | 'card' | 'spray' | 'paint'
 
 export type Cosmetic = {
   id: string
@@ -251,17 +251,23 @@ export type Cosmetic = {
 }
 
 export const COSMETICS: Cosmetic[] = [
-  { id: 'default', kind: 'outfit', name: 'Vesper', blurb: 'The hood, the cloak, the three cold eyes.', level: 1, color: 0x231b38, accent: 0x8fd3ff },
-  { id: 'neon', kind: 'outfit', name: 'Neon Wraith', blurb: 'Black cloak with a circuit hum.', level: 6, color: 0x141a22, accent: 0x39ff9a, rarity: 'rare' },
-  { id: 'white', kind: 'outfit', name: 'Championship Shade', blurb: 'A clean white cloak for a dirty lane.', level: 8, color: 0xf4f7ff, accent: 0x7ecbff, rarity: 'rare' },
-  { id: 'evori', kind: 'outfit', name: 'Evori Dream Wings', blurb: 'Pearl cloak, rose-glow eyes, and a pair of glass butterfly wings.', level: 0, color: 0xf6f0ff, accent: 0xff8fd8, price: 12, bundle: 'evori', rarity: 'legendary' },
-  { id: 'factory', kind: 'wrap', name: 'Factory', blurb: 'The marker you were handed.', level: 1, color: 0xc8d0dc },
+  { id: 'factory', kind: 'wrap', name: 'Standard', blurb: 'The marker you were handed.', level: 1, color: 0xc8d0dc },
   { id: 'candy', kind: 'wrap', name: 'Candy Drip', blurb: 'Pink and cyan, still wet.', level: 4, color: 0xff4d8d, rarity: 'rare' },
   { id: 'hazard', kind: 'wrap', name: 'Hazard', blurb: 'Chevrons for people who push smoke.', level: 9, color: 0xffe14a, rarity: 'rare' },
   { id: 'frost', kind: 'wrap', name: 'Frost', blurb: 'Pale panels, cold lane.', level: 11, color: 0xbfe9ff, rarity: 'epic' },
-  { id: 'dreamwings', kind: 'wrap', name: 'Evori Dreamwing', blurb: 'Pearl chrome with a pair of fluttering fins on every marker.', level: 0, color: 0xe9d8ff, accent: 0xffb8e6, price: 9, bundle: 'evori', rarity: 'legendary' },
+  { id: 'dreamwings', kind: 'wrap', name: 'Evori Dreamwing', blurb: 'Pearl chrome with a pair of fluttering glass wings on every marker.', level: 0, color: 0xe9d8ff, accent: 0xffb8e6, price: 14, bundle: 'evori', rarity: 'legendary' },
   { id: 'none', kind: 'buddy', name: 'No Buddy', blurb: 'A bare marker.', level: 1, color: 0x6a6280 },
+  { id: 'splat', kind: 'buddy', name: 'Splat Drop', blurb: 'A little blue paintball with a big grin.', level: 2, color: 0x3c7dff, rarity: 'rare' },
+  { id: 'hopper', kind: 'buddy', name: 'Lil Hopper', blurb: 'A tiny hopper, still full.', level: 7, color: 0xffe14a, rarity: 'rare' },
   { id: 'lumi', kind: 'buddy', name: 'Lumi the Star Cat', blurb: 'A sleepy lilac cat with a star on her forehead. Swings when you strafe.', level: 0, color: 0xa98bff, accent: 0xffe27a, price: 6, bundle: 'evori', rarity: 'epic' },
+  { id: 'pip', kind: 'buddy', name: 'Pip the Pink Bear', blurb: 'Soft, round, and very sure you will clutch this.', level: 0, color: 0xff9ec8, price: 4, rarity: 'rare' },
+  { id: 'clover', kind: 'buddy', name: 'Clover the Bunny', blurb: 'A mint bunny with one floppy ear.', level: 0, color: 0x8fe0a8, price: 4, rarity: 'rare' },
+  { id: 'nibble', kind: 'buddy', name: 'Nibble the Mouse', blurb: 'An orange mouse who chews on spare paintballs.', level: 0, color: 0xffa25a, price: 4, rarity: 'rare' },
+  { id: 'paintsplash', kind: 'card', name: 'Paint Splash', blurb: 'Blue meets orange, mid-air.', level: 1, color: 0x3c7dff },
+  { id: 'sunset', kind: 'card', name: 'Lane at Sunset', blurb: 'The warehouse yard after the last round.', level: 3, color: 0xff7424, rarity: 'rare' },
+  { id: 'shade', kind: 'card', name: 'Three Eyes', blurb: 'Vesper, watching from the dark.', level: 6, color: 0x2a1f45, rarity: 'epic' },
+  { id: 'crowncard', kind: 'card', name: 'Gilded Crown', blurb: 'For painters who close out rounds.', level: 10, color: 0xffd056, rarity: 'epic' },
+  { id: 'evoricard', kind: 'card', name: 'Evori Dream Wings Card', blurb: 'Butterfly wings over an aurora night.', level: 0, color: 0xd9b8ff, price: 5, bundle: 'evori', rarity: 'legendary' },
   { id: 'burst', kind: 'spray', name: 'Burst', blurb: 'A starburst you can slap on a wall.', level: 1, color: 0xfff4ea },
   { id: 'crown', kind: 'spray', name: 'Crown', blurb: 'For rounds you actually closed.', level: 8, color: 0xffd056, rarity: 'rare' },
   { id: 'king', kind: 'spray', name: 'Splat King', blurb: 'The victory mark.', level: 10, color: 0xff4d8d, rarity: 'epic' },
@@ -272,6 +278,10 @@ export const COSMETICS: Cosmetic[] = [
   { id: 'void', kind: 'paint', name: 'Void Purple', blurb: 'Night-match ink.', level: 12, color: 0x9b6bff, rarity: 'epic' },
   { id: 'aurora', kind: 'paint', name: 'Aurora Dream', blurb: 'Rose and lilac, like the sky over the Evori fields.', level: 0, color: 0xe7a8ff, price: 4, bundle: 'evori', rarity: 'epic' },
 ]
+
+export const DAILY_OFFERS = ['pip', 'clover', 'nibble']
+
+export const LEVEL_CARDS = COSMETICS.filter((c) => c.kind === 'card' && c.price === undefined).map((c) => c.id)
 
 export type Bundle = {
   id: string
@@ -286,7 +296,7 @@ export const BUNDLES: Bundle[] = [
     id: 'evori',
     name: 'Evori Dream Wings',
     tagline: 'Pearl, pastel, and a little bit of night sky.',
-    items: ['evori', 'dreamwings', 'lumi', 'flutter', 'aurora'],
+    items: ['dreamwings', 'lumi', 'evoricard', 'flutter', 'aurora'],
     price: 20,
   },
 ]

@@ -43,7 +43,8 @@ Click the game to capture the mouse. Paintballs have travel time and a little dr
 The menu is a Fortnite-style lobby with four tabs:
 
 - **Play** shows your character on the platform. Use the mode card to switch between Quick Match, Ranked, Custom Lobby, and the bonus arenas, then hit the yellow PLAY button. The empty party slots open the custom lobby code.
-- **Locker** has slots for your outfit, marker, wrap, gun buddy, spray, and paint. Drag the character to spin it.
+- **Locker** has slots for your marker, gun skin, gun buddy, player card, spray, and paint. Agents have no skins, so Vesper always looks the same and cosmetics live on your gun and your card. Drag the character to spin it.
+- **Player card** is the banner behind your name. It shows in the lobby, on the scoreboard, on the post-match screen, and in Career. Click the nameplate to change it.
 - **Item Shop** sells cosmetics for Paintball Caps.
 - **Career** shows your level, rank ladder, record, and recent matches.
 
@@ -59,13 +60,15 @@ Every player and bot is **Vesper**, a hooded shade:
 
 You earn 1 PC for every 3 tags, in any mode. Partial progress carries over between matches. The in-match chip under the minimap shows caps earned and progress toward the next one.
 
-The Item Shop's featured bundle is **Evori Dream Wings** (20 PC, or 34 PC bought separately):
+The Item Shop's featured bundle is **Evori Dream Wings** (20 PC, or 32 PC bought separately). Items you already own are taken off the bundle price.
 
-- Evori Dream Wings outfit: pearl cloak with glass butterfly wings (12 PC)
-- Evori Dreamwing marker wrap with wing fins (9 PC)
+- Evori Dreamwing gun skin with wing fins (14 PC)
 - Lumi the Star Cat gun buddy (6 PC)
+- Evori Dream Wings player card (5 PC)
 - Evori Flutter spray (3 PC)
 - Aurora Dream paint (4 PC)
+
+The Daily offers row sells three gun buddies for 4 PC each: Pip the Pink Bear, Clover the Bunny, and Nibble the Mouse. Splat Drop and Lil Hopper unlock with levels.
 
 ## Modes
 
@@ -77,12 +80,16 @@ The Item Shop's featured bundle is **Evori Dream Wings** (20 PC, or 34 PC bought
 
 ## Progression
 
-Matches pay XP. Levels open paint colors, weapon wraps, outfits, victory sprays, and two bonus arenas:
+Matches pay XP. Levels open paint colors, gun skins, player cards, gun buddies, victory sprays, and two bonus arenas:
 
 - **Zero-G Yard** (level 3) — low gravity, slow paint
 - **Hopper Pit** (level 5) — everyone shares one marker
 
 Speed gel, extra hoppers, and impact vests spawn on the maps. An impact vest soaks one tag.
+
+## Look
+
+Models use rounded geometry (rounded boxes, capsules, and lathed shapes) with smooth physically based shading rather than flat-shaded blocks.
 
 ## Maps
 

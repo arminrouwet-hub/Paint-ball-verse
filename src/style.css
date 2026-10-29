@@ -147,11 +147,25 @@ svg.cap { width: 1.1em; height: 1.1em; vertical-align: -0.18em; flex: none; }
 .party-slot.left { left: calc(50% - 300px); }
 .party-slot.right { right: calc(50% - 300px); }
 .nameplate {
-  position: absolute; left: 50%; bottom: 13%; transform: translateX(-50%); text-align: center;
-  background: rgba(8, 14, 60, 0.7); border: 2px solid rgba(255,255,255,0.25); border-radius: 10px; padding: 6px 16px;
+  pointer-events: auto; position: absolute; left: 50%; bottom: 11%; transform: translateX(-50%);
+  width: min(340px, 70vw); height: 86px; text-align: left; color: white; padding: 0 0 10px 16px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  background-size: cover; background-position: center; border: 3px solid rgba(255,255,255,0.55); border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.3); text-shadow: 0 2px 6px rgba(0,0,0,0.7);
 }
-.nameplate b { display: block; font-family: "Russo One", sans-serif; font-size: 18px; }
-.nameplate span { font-size: 12px; color: var(--muted); font-weight: 700; }
+.nameplate:hover { border-color: var(--yellow); }
+.nameplate b { display: block; font-family: "Russo One", sans-serif; font-size: 22px; }
+.nameplate span { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; }
+.post-card {
+  height: 76px; border-radius: 10px; background-size: cover; background-position: center; border: 2px solid rgba(255,255,255,0.4);
+  display: flex; flex-direction: column; justify-content: flex-end; padding: 0 0 8px 14px; margin: 10px 0; color: white; text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+}
+.post-card b { font-family: "Russo One", sans-serif; font-size: 20px; }
+.post-card span { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; }
+.mini-card { width: 64px; height: 16px; object-fit: cover; border-radius: 3px; vertical-align: -3px; margin-right: 8px; border: 1px solid rgba(255,255,255,0.3); }
+.bundle-card { position: absolute !important; inset: auto !important; right: 18px; top: 18px; width: 92px !important; height: 184px !important; border-radius: 10px; border: 3px solid rgba(255,255,255,0.75); transform: rotate(6deg); box-shadow: 0 10px 20px rgba(0,0,0,0.35); }
+.shop-daily { max-width: 1180px; margin: 6px auto 0; }
+.shop-items.daily { grid-template-columns: repeat(auto-fill, minmax(170px, 200px)); }
 .kit-card, .quest-card {
   pointer-events: auto; position: absolute; left: 20px; width: min(320px, 30vw);
   background: rgba(8, 14, 60, 0.78); border: 3px solid rgba(255,255,255,0.18); border-radius: 14px; padding: 14px;

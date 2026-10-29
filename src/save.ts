@@ -30,9 +30,9 @@ export type Save = {
   history: HistoryEntry[]
   equipped: {
     weapon: WeaponId
-    outfit: string
     wrap: string
     buddy: string
+    card: string
     paint: string
     spray: string
   }
@@ -59,9 +59,9 @@ export function defaultSave(): Save {
     history: [],
     equipped: {
       weapon: 'rapid',
-      outfit: 'default',
       wrap: 'factory',
       buddy: 'none',
+      card: 'paintsplash',
       paint: 'classic',
       spray: 'burst',
     },
@@ -78,7 +78,7 @@ export function loadSave(): Save {
       ...base,
       ...parsed,
       equipped: { ...base.equipped, ...(parsed.equipped ?? {}) },
-      owned: Array.isArray(parsed.owned) ? parsed.owned.filter((id) => typeof id === 'string') : [],
+      owned: Array.isArray(parsed.owned) ? parsed.owned.filter((id) => typeof id === 'string').map((id) => (id === 'evori' ? 'evoricard' : id)) : [],
       history: Array.isArray(parsed.history) ? parsed.history.slice(0, 8) : [],
     }
     return sanitize(save)
@@ -109,11 +109,12 @@ function fallback(kind: ItemKind): string {
   if (kind === 'wrap') return 'factory'
   if (kind === 'spray') return 'burst'
   if (kind === 'buddy') return 'none'
-  return 'default'
+  return 'paintsplash'
 }
 
 export function sanitize(save: Save): Save {
-  const next = { ...save, equipped: { ...save.equipped }, owned: [...new Set(save.owned ?? [])] }
+  const { weapon, wrap, buddy, card, paint, spray } = save.equipped
+  const next = { ...save, equipped: { weapon, wrap, buddy, card, paint, spray }, owned: [...new Set(save.owned ?? [])] }
   next.name = (next.name || 'Painter').replace(/[^\w .'-]/g, '').slice(0, 16) || 'Painter'
   next.sensitivity = Math.max(0.4, Math.min(2.2, Number(next.sensitivity) || 1))
   next.volume = Math.max(0, Math.min(1, Number(next.volume) || 0))
@@ -127,7 +128,7 @@ export function sanitize(save: Save): Save {
   next.owned = next.owned.filter((id) => COSMETICS.some((c) => c.id === id && c.price !== undefined))
   const weapons: WeaponId[] = ['rapid', 'sniper', 'splash']
   if (!weapons.includes(next.equipped.weapon)) next.equipped.weapon = 'rapid'
-  for (const kind of ['outfit', 'wrap', 'buddy', 'paint', 'spray'] as const) {
+  for (const kind of ['wrap', 'buddy', 'card', 'paint', 'spray'] as const) {
     const id = next.equipped[kind]
     if (cosmetic(id).kind !== kind || !owns(next, id)) next.equipped[kind] = fallback(kind)
   }

@@ -142,6 +142,7 @@ export type Actor = Body & {
   agentId: AgentId
   weaponId: WeaponId
   paintId: string
+  cardId: string
   state: Life
   hp: number
   yaw: number
@@ -238,7 +239,7 @@ export type MatchConfig = {
   onegun: boolean
   weaponId: WeaponId
   agentId: AgentId
-  outfitId: string
+  cardId: string
   wrapId: string
   paintId: string
   sprayId: string
@@ -276,6 +277,7 @@ export type FeedItem = { id: number; text: string; tone: 'blue' | 'orange' | 'ne
 export type BoardRow = {
   name: string
   team: Team
+  card: string
   weapon: string
   tags: number
   deaths: number

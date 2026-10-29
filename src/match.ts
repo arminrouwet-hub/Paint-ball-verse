@@ -16,6 +16,7 @@ import type {
 import {
   BOT_NAMES,
   DIFFICULTY,
+  LEVEL_CARDS,
   PC_PER_TAGS,
   VESPER,
   cosmetic,
@@ -402,6 +403,7 @@ export class Match {
     const rows = this.actors.map((a) => ({
       name: a.name,
       team: a.team,
+      card: a.cardId,
       weapon: weaponById(a.weaponId).name,
       tags: a.tags,
       deaths: a.deaths,
@@ -557,6 +559,7 @@ export class Match {
       agentId,
       weaponId,
       paintId: isPlayer ? this.config.paintId : 'classic',
+      cardId: isPlayer ? this.config.cardId : LEVEL_CARDS[Math.floor(this.rng() * LEVEL_CARDS.length)]!,
       state: 'alive',
       hp: 100,
       x: 0,
@@ -616,7 +619,6 @@ export class Match {
 
   private makeVisual(actor: Actor): Visual {
     const rig = createCharacter(actor.team, {
-      outfit: actor.isPlayer ? this.config.outfitId : 'default',
       weapon: actor.weaponId,
       wrap: actor.isPlayer ? this.config.wrapId : 'factory',
       buddy: actor.isPlayer ? this.config.buddyId : 'none',

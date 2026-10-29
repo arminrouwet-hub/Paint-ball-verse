@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { Colliders, MapDef } from './types.ts'
-import { GEO, boxMesh, lambert } from './materials.ts'
+import { GEO, boxMesh, matte } from './materials.ts'
 import { makeGroundTexture } from './effects.ts'
 
 export type BuiltWorld = {
@@ -37,7 +37,7 @@ export function buildWorld(scene: THREE.Scene, map: MapDef): BuiltWorld {
   const w = map.bounds.maxX - map.bounds.minX + 10
   const d = map.bounds.maxZ - map.bounds.minZ + 10
   const floorTexture = makeGroundTexture(map.floorStyle, map.floor)
-  const floorMat = new THREE.MeshLambertMaterial({ map: floorTexture, color: 0xffffff })
+  const floorMat = new THREE.MeshStandardMaterial({ map: floorTexture, color: 0xffffff, roughness: 0.9 })
   const floor = new THREE.Mesh(GEO.plane, floorMat)
   floor.rotation.x = -Math.PI / 2
   floor.scale.set(w, d, 1)
@@ -63,7 +63,7 @@ export function buildWorld(scene: THREE.Scene, map: MapDef): BuiltWorld {
 
   for (const c of map.cylinders) {
     const h = c.maxY - c.minY
-    const mesh = new THREE.Mesh(GEO.cyl, lambert(c.color))
+    const mesh = new THREE.Mesh(GEO.cyl, matte(c.color))
     mesh.scale.set(c.r, h, c.r)
     mesh.position.set(c.x, (c.minY + c.maxY) / 2, c.z)
     mesh.castShadow = true
@@ -74,13 +74,13 @@ export function buildWorld(scene: THREE.Scene, map: MapDef): BuiltWorld {
 
   for (const deco of map.decor) {
     if (deco.kind === 'cone') {
-      const mesh = new THREE.Mesh(GEO.cone, lambert(deco.color))
+      const mesh = new THREE.Mesh(GEO.cone, matte(deco.color))
       mesh.scale.set(deco.r, deco.h, deco.r)
       mesh.position.set(deco.x, deco.y, deco.z)
       mesh.castShadow = true
       scene.add(mesh)
     } else if (deco.kind === 'sphere') {
-      const mesh = new THREE.Mesh(GEO.sphere, lambert(deco.color))
+      const mesh = new THREE.Mesh(GEO.sphere, matte(deco.color))
       mesh.scale.setScalar(deco.r)
       mesh.position.set(deco.x, deco.y, deco.z)
       mesh.castShadow = true

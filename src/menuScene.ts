@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { createCharacter, type Look, type Rig } from './characters.ts'
-import { GEO, basic, lambert } from './materials.ts'
+import { GEO, basic, matte } from './materials.ts'
 
 export type LobbyView = 'play' | 'locker' | 'shop' | 'career'
 
@@ -47,16 +47,16 @@ export class MenuScene {
     rim.position.set(-5, 3, -4)
     this.scene.add(rim)
 
-    const ground = new THREE.Mesh(GEO.circle, lambert(0x5aa0ff, false))
+    const ground = new THREE.Mesh(GEO.circle, matte(0x5aa0ff))
     ground.rotation.x = -Math.PI / 2
     ground.scale.setScalar(60)
     ground.position.y = -0.6
     this.scene.add(ground)
 
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 0.5, 28), lambert(0x1b2a6b))
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.7, 0.5, 28), matte(0x1b2a6b))
     base.position.y = -0.25
     this.scene.add(base)
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.45, 0.06, 28), lambert(0x2a3f9a, false))
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.45, 0.06, 28), matte(0x2a3f9a))
     top.position.y = 0.01
     this.scene.add(top)
     this.ring = new THREE.Mesh(new THREE.TorusGeometry(1.48, 0.05, 6, 48), basic(0xffe14a))
@@ -78,7 +78,7 @@ export class MenuScene {
       this.scene.add(splat)
     })
 
-    const cloudMat = lambert(0xffffff)
+    const cloudMat = matte(0xffffff)
     for (let i = 0; i < 9; i++) {
       const cloud = new THREE.Group()
       for (let j = 0; j < 4; j++) {
